@@ -465,7 +465,6 @@ data class StreakData(
     val nextMilestone: Int = 30
 )
 
-@Composable
 fun getMainStreak(): StreakData {
     return StreakData(
         id = 1,
@@ -478,7 +477,6 @@ fun getMainStreak(): StreakData {
     )
 }
 
-@Composable
 fun getOtherStreaks(): List<StreakData> {
     return listOf(
         StreakData(

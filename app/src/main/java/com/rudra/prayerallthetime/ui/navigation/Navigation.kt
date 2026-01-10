@@ -25,7 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -40,8 +40,8 @@ import com.rudra.prayerallthetime.ui.theme.IslamicGold
 @Composable
 fun PremiumNavigation() {
     val navController = rememberNavController()
-    val prayerViewModel: PrayerViewModel = viewModel()
-    val settingsViewModel: SettingsViewModel = viewModel()
+    val prayerViewModel: PrayerViewModel = hiltViewModel()
+    val settingsViewModel: SettingsViewModel = hiltViewModel()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 

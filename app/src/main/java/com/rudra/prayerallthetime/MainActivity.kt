@@ -12,7 +12,9 @@ import androidx.core.content.ContextCompat
 import com.rudra.prayerallthetime.notifications.NotificationHelper
 import com.rudra.prayerallthetime.ui.navigation.Navigation
 import com.rudra.prayerallthetime.ui.theme.PrayerAllTheTimeTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(

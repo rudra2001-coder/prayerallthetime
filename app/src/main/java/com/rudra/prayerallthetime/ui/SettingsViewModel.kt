@@ -1,13 +1,16 @@
 package com.rudra.prayerallthetime.ui
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import com.rudra.prayerallthetime.data.repository.SettingsRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import javax.inject.Inject
 
-class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = SettingsRepository(application)
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val repository: SettingsRepository
+) : ViewModel() {
 
     private val _notificationsEnabled = MutableStateFlow(repository.isNotificationEnabled())
     val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled
