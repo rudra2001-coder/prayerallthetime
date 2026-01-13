@@ -60,6 +60,9 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     testImplementation(libs.junit)
 
+    // DataStore
+    implementation("androidx.datastore:datastore-preferences:1.1.3")
+
     // Coil
     implementation("io.coil-kt:coil-compose:2.6.0")
 

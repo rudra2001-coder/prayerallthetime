@@ -1,11 +1,7 @@
 package com.rudra.prayerallthetime.ui.navigation
 
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -34,7 +30,20 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.rudra.prayerallthetime.ui.*
+import com.rudra.prayerallthetime.ui.screen.analytics.AnalyticsScreen
+import com.rudra.prayerallthetime.ui.screen.calendar.CalendarScreen
+import com.rudra.prayerallthetime.ui.screen.dashboard.DashboardScreen
+import com.rudra.prayerallthetime.ui.screen.family.FamilyScreen
+import com.rudra.prayerallthetime.ui.screen.prayer.PrayerViewModel
+import com.rudra.prayerallthetime.ui.screen.prayer.PrayersScreen
+import com.rudra.prayerallthetime.ui.screen.qibla.QiblaScreen
+import com.rudra.prayerallthetime.ui.screen.quran.QuranHadithScreen
+import com.rudra.prayerallthetime.ui.screen.ramadan.RamadanScreen
+import com.rudra.prayerallthetime.ui.screen.settings.SettingsScreen
+import com.rudra.prayerallthetime.ui.screen.settings.SettingsViewModel
+import com.rudra.prayerallthetime.ui.screen.tahajjud.TahajjudScreen
+import com.rudra.prayerallthetime.ui.screen.worship.WorshipScreen
+import com.rudra.prayerallthetime.ui.screen.wuduguide.WuduGuideScreen
 import com.rudra.prayerallthetime.ui.theme.IslamicGold
 
 @Composable
@@ -125,12 +134,29 @@ fun PremiumNavigation() {
                 )
             }
 
+            composable(Screen.Calendar.route) {
+                CalendarScreen(
+                    navController = navController,
+                    prayerViewModel = prayerViewModel
+                )
+            }
+
+            composable(Screen.Wudu.route) {
+                WuduGuideScreen(navController = navController)
+            }
+
+            composable(Screen.Tahajjud.route) {
+                TahajjudScreen(navController = navController, prayerViewModel = prayerViewModel)
+            }
+
             // Placeholders for other screens
-            composable(Screen.Tasbeeh.route) { WorshipScreen(navController = navController, prayerViewModel = prayerViewModel) }
-            composable(Screen.Wudu.route) { Text("Wudu Guide Coming Soon") }
-            composable(Screen.Tahajjud.route) { Text("Tahajjud Timer Coming Soon") }
+            composable(Screen.Tasbeeh.route) {
+                WorshipScreen(
+                    navController = navController,
+                    prayerViewModel = prayerViewModel
+                )
+            }
             composable(Screen.Charity.route) { Text("Charity Tracker Coming Soon") }
-            composable(Screen.Calendar.route) { Text("Islamic Calendar Coming Soon") }
             composable(Screen.Profile.route) { Text("Profile Coming Soon") }
             composable(Screen.Notifications.route) { Text("Notifications Coming Soon") }
             composable(Screen.Achievements.route) { Text("Achievements Coming Soon") }
