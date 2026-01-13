@@ -33,7 +33,7 @@ class PrayerViewModel @Inject constructor(
     private val _prayers = MutableStateFlow<List<Prayer>>(emptyList())
     val prayers: StateFlow<List<Prayer>> = _prayers.asStateFlow()
 
-    private val _cityName = MutableStateFlow("Dhaka")
+    private val _cityName = MutableStateFlow("Detecting...")
     val cityName: StateFlow<String> = _cityName.asStateFlow()
 
     private val _qiblaDirection = MutableStateFlow(0f)
@@ -61,10 +61,10 @@ class PrayerViewModel @Inject constructor(
     val completionRate = MutableStateFlow(0.85f)
     val weeklyDayData = MutableStateFlow(emptyList<DayData>())
     
-    val fastingCountdown = MutableStateFlow("12:34:56")
-    val suhoorTime = MutableStateFlow("04:30 AM")
-    val iftarTime = MutableStateFlow("06:15 PM")
-    val ramadanDay = MutableStateFlow(10)
+    val fastingCountdown = MutableStateFlow("00:00:00")
+    val suhoorTime = MutableStateFlow("--:--")
+    val iftarTime = MutableStateFlow("--:--")
+    val ramadanDay = MutableStateFlow(0)
 
     val ayatArabic = MutableStateFlow("بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ")
     val ayatEnglish = MutableStateFlow("In the name of Allah, the Entirely Merciful, the Especially Merciful.")
@@ -98,12 +98,13 @@ class PrayerViewModel @Inject constructor(
     
     private fun loadInitialData() {
         viewModelScope.launch {
-            val savedLocation = localSettings.userLocation.first()
-            if (savedLocation != null) {
-                _cityName.value = localSettings.cityName.first() ?: "Unknown"
-                fetchPrayerTimes(savedLocation.first, savedLocation.second)
-            } else {
-                refreshLocation()
+            localSettings.userLocation.collectLatest { savedLocation ->
+                if (savedLocation != null) {
+                    _cityName.value = localSettings.cityName.first() ?: "Unknown"
+                    fetchPrayerTimes(savedLocation.first, savedLocation.second)
+                } else {
+                    refreshLocation()
+                }
             }
         }
     }
@@ -136,6 +137,10 @@ class PrayerViewModel @Inject constructor(
                 gregorianDate.value = data.gregorianDate
                 _qiblaDirection.value = data.qiblaDirection.replace("°", "").toFloatOrNull() ?: 0f
                 
+                // Update Ramadan related times if available
+                suhoorTime.value = data.allPrayers.find { it.name.equals("Fajr", true) }?.time ?: "--:--"
+                iftarTime.value = data.allPrayers.find { it.name.equals("Maghrib", true) }?.time ?: "--:--"
+                
                 syncPrayersWithLocalDb(data)
                 
             } catch (e: Exception) {
@@ -145,12 +150,11 @@ class PrayerViewModel @Inject constructor(
     }
 
     private suspend fun syncPrayersWithLocalDb(data: PrayerData) {
-        val allPrayerNames = listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha")
         val localRecords = prayerDao.getRecordsForDate(todayStr).first()
         
-        val prayerList = allPrayerNames.map { name ->
-            val isPrayed = localRecords.find { it.prayerName == name }?.isCompleted ?: false
-            Prayer(name, if (name == data.nextPrayer.name) data.nextPrayer.time else "--:--", isPrayed)
+        val prayerList = data.allPrayers.map { detail ->
+            val isPrayed = localRecords.find { it.prayerName == detail.name }?.isCompleted ?: false
+            Prayer(detail.name, detail.time, isPrayed)
         }
         _prayers.value = prayerList
     }
@@ -160,7 +164,7 @@ class PrayerViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val location = locationService.getCurrentLocation()
-                val city = "Detected Location" 
+                val city = "Current Location" 
                 localSettings.saveLocation(location.latitude, location.longitude, city)
                 _cityName.value = city
                 fetchPrayerTimes(location.latitude, location.longitude)
