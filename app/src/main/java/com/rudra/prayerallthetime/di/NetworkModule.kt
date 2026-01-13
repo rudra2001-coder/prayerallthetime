@@ -2,12 +2,14 @@ package com.rudra.prayerallthetime.di
 
 import com.rudra.prayerallthetime.data.AlQuranApiService
 import com.rudra.prayerallthetime.data.HadithApiService
+import com.rudra.prayerallthetime.data.remote.PrayerApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -16,7 +18,8 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(): Retrofit {
+    @Named("HadithRetrofit")
+    fun provideHadithRetrofit(): Retrofit {
         return Retrofit.Builder()
             .baseUrl("https://hadithapi.com/api/")
             .addConverterFactory(GsonConverterFactory.create())
@@ -25,8 +28,24 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideHadithApiService(retrofit: Retrofit): HadithApiService {
+    fun provideHadithApiService(@Named("HadithRetrofit") retrofit: Retrofit): HadithApiService {
         return retrofit.create(HadithApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    @Named("AladhanRetrofit")
+    fun provideAladhanRetrofit(): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://api.aladhan.com/v1/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun providePrayerApiService(@Named("AladhanRetrofit") retrofit: Retrofit): PrayerApiService {
+        return retrofit.create(PrayerApiService::class.java)
     }
 
     @Provides

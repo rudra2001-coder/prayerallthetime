@@ -11,6 +11,7 @@ sealed class PrayerState {
 
 data class PrayerData(
     val nextPrayer: PrayerDetails,
+    val allPrayers: List<PrayerDetails>,
     val countdown: String,
     val nextPrayerMillis: Long = 0L,
     val sunrise: String,

@@ -60,6 +60,10 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     testImplementation(libs.junit)
 
+    // api for prayer time and ajan calender
+    implementation("com.github.persian-calendar:praytimes:2.1.2")
+    implementation("dev.kosrat:muslimdata:2.7.1")
+
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.1.3")
 
@@ -79,6 +83,9 @@ dependencies {
     implementation("androidx.compose.material:material")
     implementation("androidx.compose.material:material-icons-extended")
     
+    // UI components are handled by Material3 from BOM, but specific version kept for consistency
+    implementation("androidx.compose.material3:material3:1.2.1")
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
