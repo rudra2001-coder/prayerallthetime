@@ -25,6 +25,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.*
 import com.rudra.prayerallthetime.ui.theme.*
 import kotlinx.coroutines.delay
@@ -599,4 +600,20 @@ fun HeroCard(
         onDetectLocationClick = onDetectLocationClick,
         modifier = modifier
     )
+}
+
+@Preview
+@Composable
+fun PremiumHeroCardPreview() {
+    PrayerAllTheTimeTheme {
+        PremiumHeroCard()
+    }
+}
+
+@Preview
+@Composable
+fun ErrorHeroCardPreview() {
+    PrayerAllTheTimeTheme {
+        ErrorHeroCard(errorMessage = "Failed to fetch prayer times", onRetry = {})
+    }
 }

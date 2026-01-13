@@ -1,18 +1,19 @@
-package com.rudra.prayerallthetime.ui.screen.prayer
+package com.rudra.prayerallthetime.ui.screen.dashboard
 
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudra.prayerallthetime.data.LocationService
 import com.rudra.prayerallthetime.data.Prayer
-import com.rudra.prayerallthetime.data.local.FamilyMemberRecord
 import com.rudra.prayerallthetime.data.local.LocalSettings
 import com.rudra.prayerallthetime.data.local.PrayerDao
 import com.rudra.prayerallthetime.data.local.PrayerRecord
-import com.rudra.prayerallthetime.data.local.TaraweehRecord
-import com.rudra.prayerallthetime.data.local.TasbeehRecord
+import com.rudra.prayerallthetime.data.repository.HadithRepository
 import com.rudra.prayerallthetime.data.repository.PrayerRepository
+import com.rudra.prayerallthetime.ui.navigation.Screen
 
+import com.rudra.prayerallthetime.ui.screen.prayer.PrayerData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -21,46 +22,47 @@ import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 @HiltViewModel
-class PrayerViewModel @Inject constructor(
+class DashboardViewModel @Inject constructor(
     private val prayerRepository: PrayerRepository,
     private val locationService: LocationService,
     private val localSettings: LocalSettings,
-    private val prayerDao: PrayerDao
+    private val prayerDao: PrayerDao,
+    private val hadithRepository: HadithRepository
 ) : ViewModel() {
-    
-    val prayerState = mutableStateOf<PrayerState>(PrayerState.Loading)
-    
+
+    // Data-driven Feature List
+//    val dashboardItems = listOf(
+//        DashboardItem("Prayers", Icons.Default.AccessTime, Screen.Prayers.route),
+//        DashboardItem("Quran", Icons.Default.MenuBook, Screen.QuranHadith.route),
+//        DashboardItem("Hadith", Icons.Default.HistoryEdu, Screen.Hadith.route),
+//        DashboardItem("Tasbeeh", Icons.Default.Favorite, Screen.Tasbeeh.route),
+//        DashboardItem("Qibla", Icons.Default.Explore, Screen.Qibla.route),
+//        DashboardItem("Ramadan", Icons.Default.NightsStay, Screen.Ramadan.route),
+//        DashboardItem("Analytics", Icons.Default.Analytics, Screen.Analytics.route),
+//        DashboardItem("Family", Icons.Default.People, Screen.Family.route),
+//        DashboardItem("Wudu Guide", Icons.Default.WaterDrop, Screen.Wudu.route)
+//    )
+
     private val _prayers = MutableStateFlow<List<Prayer>>(emptyList())
     val prayers: StateFlow<List<Prayer>> = _prayers.asStateFlow()
 
     private val _cityName = MutableStateFlow("Dhaka")
     val cityName: StateFlow<String> = _cityName.asStateFlow()
 
-    private val _qiblaDirection = MutableStateFlow(0f)
-    val qiblaDirection: StateFlow<Float> = _qiblaDirection.asStateFlow()
-
-    private val _tasbeehCount = MutableStateFlow(0)
-    val tasbeehCount: StateFlow<Int> = _tasbeehCount.asStateFlow()
-
-    // Persistent Worship States
-    val wuduStatus = localSettings.wuduStatus.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
-    val currentSurah = localSettings.currentSurah.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Al-Fatihah")
-    val tahajjudTimeStr = localSettings.tahajjudTime.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "03:45 AM")
-
-    // Dashboard specific states
     val nextPrayerName = MutableStateFlow("Fajr")
     val countdown = MutableStateFlow("00:00:00")
     val nextPrayerMillis = MutableStateFlow(0L)
     val sunriseTime = MutableStateFlow("--:--")
     val hijriDate = MutableStateFlow("-- -- ----")
     val gregorianDate = MutableStateFlow(LocalDate.now().toString())
-    
+
     val isRamadan = MutableStateFlow(true)
+    val tasbeehCount = MutableStateFlow(0)
     val taraweehCount = MutableStateFlow(0)
     val currentStreak = MutableStateFlow(7)
     val completionRate = MutableStateFlow(0.85f)
-    val weeklyDayData = MutableStateFlow(emptyList<DayData>())
-    
+
+
     val fastingCountdown = MutableStateFlow("12:34:56")
     val suhoorTime = MutableStateFlow("04:30 AM")
     val iftarTime = MutableStateFlow("06:15 PM")
@@ -69,33 +71,27 @@ class PrayerViewModel @Inject constructor(
     val ayatArabic = MutableStateFlow("بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ")
     val ayatEnglish = MutableStateFlow("In the name of Allah, the Entirely Merciful, the Especially Merciful.")
     val surahInfo = MutableStateFlow("Al-Fatihah 1:1")
+    
+    val hadithArabic = MutableStateFlow("خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ")
+    val hadithEnglish = MutableStateFlow("The best among you are those who learn the Quran and teach it.")
+    val hadithInfo = MutableStateFlow("Sahih al-Bukhari")
+    
     val isAyatBookmarked = MutableStateFlow(false)
     val isHadithBookmarked = MutableStateFlow(false)
 
-    val familyMembers: StateFlow<List<FamilyMemberRecord>> = prayerDao.getAllFamilyMembers()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    private val _prayerStats = MutableStateFlow<Map<String, Float>>(mapOf(
-        "Fajr" to 0.8f,
-        "Dhuhr" to 0.9f,
-        "Asr" to 0.75f,
-        "Maghrib" to 0.95f,
-        "Isha" to 0.85f
-    ))
-    val prayerStats: StateFlow<Map<String, Float>> = _prayerStats.asStateFlow()
-
-    val earnedBadges = MutableStateFlow(emptyList<Badge>())
-    val upcomingBadges = MutableStateFlow(emptyList<Badge>())
+    val wuduStatus = localSettings.wuduStatus.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val currentSurah = localSettings.currentSurah.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Al-Fatihah")
+    val tahajjudTimeStr = localSettings.tahajjudTime.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "03:45 AM")
 
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     private val todayStr = LocalDate.now().format(dateFormatter)
 
     init {
         loadInitialData()
-        loadLocalTasbeeh()
-        loadLocalTaraweeh()
+        loadLocalCounts()
+        fetchHadithOfTheDay()
     }
-    
+
     private fun loadInitialData() {
         viewModelScope.launch {
             val savedLocation = localSettings.userLocation.first()
@@ -108,17 +104,24 @@ class PrayerViewModel @Inject constructor(
         }
     }
 
-    private fun loadLocalTasbeeh() {
+    private fun fetchHadithOfTheDay() {
         viewModelScope.launch {
-            val record = prayerDao.getTasbeehForDate(todayStr)
-            _tasbeehCount.value = record?.totalCount ?: 0
+            val hadith = hadithRepository.getRandomHadith()
+            if (hadith != null) {
+                hadithArabic.value = hadith.hadithArabic ?: ""
+                hadithEnglish.value = hadith.hadithEnglish ?: ""
+                hadithInfo.value = "${hadith.book.bookName}, Hadith ${hadith.hadithNumber}"
+            }
         }
     }
 
-    private fun loadLocalTaraweeh() {
+    private fun loadLocalCounts() {
         viewModelScope.launch {
-            val record = prayerDao.getTaraweehForDate(todayStr)
-            taraweehCount.value = record?.rakatCount ?: 0
+            val tasbeehRecord = prayerDao.getTasbeehForDate(todayStr)
+            tasbeehCount.value = tasbeehRecord?.totalCount ?: 0
+            
+            val taraweehRecord = prayerDao.getTaraweehForDate(todayStr)
+            taraweehCount.value = taraweehRecord?.rakatCount ?: 0
         }
     }
 
@@ -126,20 +129,16 @@ class PrayerViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val data = prayerRepository.getPrayerTimes(lat, lon, LocalDate.now())
-                prayerState.value = PrayerState.Success(data)
-                
                 nextPrayerName.value = data.nextPrayer.name
                 countdown.value = data.countdown
                 nextPrayerMillis.value = data.nextPrayerMillis
                 sunriseTime.value = data.sunrise
                 hijriDate.value = data.hijriDate
                 gregorianDate.value = data.gregorianDate
-                _qiblaDirection.value = data.qiblaDirection.replace("°", "").toFloatOrNull() ?: 0f
                 
                 syncPrayersWithLocalDb(data)
-                
             } catch (e: Exception) {
-                prayerState.value = PrayerState.Error(e.message ?: "Unknown error")
+                // Handle error
             }
         }
     }
@@ -156,7 +155,6 @@ class PrayerViewModel @Inject constructor(
     }
 
     fun refreshLocation() {
-        prayerState.value = PrayerState.Loading
         viewModelScope.launch {
             try {
                 val location = locationService.getCurrentLocation()
@@ -165,11 +163,11 @@ class PrayerViewModel @Inject constructor(
                 _cityName.value = city
                 fetchPrayerTimes(location.latitude, location.longitude)
             } catch (e: Exception) {
-                prayerState.value = PrayerState.Error("Location access failed: ${e.message}")
+                // Handle error
             }
         }
     }
-    
+
     fun togglePrayerState(prayer: Prayer) {
         viewModelScope.launch {
             val newStatus = !prayer.isPrayed
@@ -195,62 +193,13 @@ class PrayerViewModel @Inject constructor(
         }
     }
 
-    fun updateCurrentSurah(surah: String) {
-        viewModelScope.launch {
-            localSettings.updateCurrentSurah(surah)
-        }
-    }
-
-    fun incrementTasbeeh() {
-        viewModelScope.launch {
-            val newCount = _tasbeehCount.value + 1
-            _tasbeehCount.value = newCount
-            prayerDao.insertTasbeeh(TasbeehRecord(todayStr, newCount))
-        }
-    }
-
-    fun resetTasbeeh() {
-        viewModelScope.launch {
-            _tasbeehCount.value = 0
-            prayerDao.insertTasbeeh(TasbeehRecord(todayStr, 0))
-        }
-    }
-
-    fun incrementTaraweeh() {
-        viewModelScope.launch {
-            val newCount = (taraweehCount.value + 2).coerceAtMost(20)
-            taraweehCount.value = newCount
-            prayerDao.insertTaraweeh(TaraweehRecord(todayStr, newCount))
-        }
-    }
-
-    fun resetTaraweeh() {
-        viewModelScope.launch {
-            taraweehCount.value = 0
-            prayerDao.insertTaraweeh(TaraweehRecord(todayStr, 0))
-        }
-    }
-
-    fun addFamilyMember(name: String) {
-        viewModelScope.launch {
-            prayerDao.insertFamilyMember(FamilyMemberRecord(name = name, completedPrayers = 0))
-        }
-    }
-
-    fun removeFamilyMember(member: FamilyMemberRecord) {
-        viewModelScope.launch {
-            prayerDao.deleteFamilyMember(member)
-        }
-    }
-
-    fun getNextPrayerTime(): String = nextPrayerName.value
-    fun isAlarmSet(): Boolean = true
-    fun getQiblaDirection(): Float = _qiblaDirection.value
-    fun updateLocation(lat: Double, lng: Double) { fetchPrayerTimes(lat, lng) }
-    fun toggleAlarm() {}
     fun toggleAyatBookmark() { isAyatBookmarked.value = !isAyatBookmarked.value }
     fun toggleHadithBookmark() { isHadithBookmarked.value = !isHadithBookmarked.value }
     fun shareContent(content: String) {}
     fun playAudio(text: String) {}
-    fun refreshData() { loadInitialData() }
+    
+    fun getNextPrayerTime(): String = nextPrayerName.value
+    fun isAlarmSet(): Boolean = true
+    fun getQiblaDirection(): Float = 0f // Placeholder
+    fun toggleAlarm() {}
 }

@@ -1,73 +1,88 @@
 package com.rudra.prayerallthetime.ui.screen.quran
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.rudra.prayerallthetime.ui.screen.dashboard.components.PremiumAyatOfTheDayCard
-import com.rudra.prayerallthetime.ui.screen.dashboard.components.PremiumHadithOfTheDayCard
 import com.rudra.prayerallthetime.ui.screen.prayer.PrayerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun QuranHadithScreen(navController: NavController, prayerViewModel: PrayerViewModel) {
-    val ayatArabic by prayerViewModel.ayatArabic.collectAsState()
-    val ayatEnglish by prayerViewModel.ayatEnglish.collectAsState()
-    val surahInfo by prayerViewModel.surahInfo.collectAsState()
-    val isAyatBookmarked by prayerViewModel.isAyatBookmarked.collectAsState()
-    val isHadithBookmarked by prayerViewModel.isHadithBookmarked.collectAsState()
+fun QuranHadithScreen(
+    navController: NavController,
+    prayerViewModel: PrayerViewModel,
+    viewModel: QuranHadithViewModel = hiltViewModel()
+) {
+    val ayatArabic by viewModel.ayatArabic.collectAsState()
+    val ayatEnglish by viewModel.ayatEnglish.collectAsState()
+    val surahInfo by viewModel.surahInfo.collectAsState()
+    val isAyatBookmarked by viewModel.isAyatBookmarked.collectAsState()
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Quran & Hadith") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                }
-            )
+            TopAppBar(title = { Text("Quran & Hadith") })
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
+                .fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            PremiumAyatOfTheDayCard(
-                arabicText = ayatArabic,
-                englishText = ayatEnglish,
-                translation = "Daily verse from the Noble Quran",
-                surahInfo = surahInfo,
-                isBookmarked = isAyatBookmarked,
-                onBookmarkClick = { prayerViewModel.toggleAyatBookmark() },
-                onShareClick = { prayerViewModel.shareContent("$ayatArabic\n\n$ayatEnglish\n($surahInfo)") },
-                onClick = { /* Could navigate to full Surah view in future */ }
-            )
+            item {
+                AyatCard(
+                    arabicText = ayatArabic,
+                    englishText = ayatEnglish,
+                    surahInfo = surahInfo,
+                    isBookmarked = isAyatBookmarked,
+                    onBookmarkClick = { viewModel.toggleAyatBookmark() }
+                )
+            }
+            
+            item {
+                Button(
+                    onClick = { navController.navigate("hadith") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Go to Hadith Explorer")
+                }
+            }
+        }
+    }
+}
 
-            PremiumHadithOfTheDayCard(
-                isBookmarked = isHadithBookmarked,
-                onBookmarkClick = { prayerViewModel.toggleHadithBookmark() },
-                onShareClick = { prayerViewModel.shareContent("The best among you are those who learn the Quran and teach it. (Sahih al-Bukhari)") },
-                onAudioClick = { prayerViewModel.playAudio("خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ") },
-                onClick = { /* Could navigate to full Hadith view in future */ }
-            )
+@Composable
+fun AyatCard(
+    arabicText: String,
+    englishText: String,
+    surahInfo: String,
+    isBookmarked: Boolean,
+    onBookmarkClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = arabicText, style = MaterialTheme.typography.headlineMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = englishText, style = MaterialTheme.typography.bodyMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = surahInfo, style = MaterialTheme.typography.labelSmall)
+                IconButton(onClick = onBookmarkClick) {
+                    // Use a simple text or icon if library is missing
+                    Text(if (isBookmarked) "❤️" else "🤍")
+                }
+            }
         }
     }
 }

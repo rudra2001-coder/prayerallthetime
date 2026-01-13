@@ -31,26 +31,49 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.rudra.prayerallthetime.ui.screen.analytics.AnalyticsScreen
+import com.rudra.prayerallthetime.ui.screen.analytics.AnalyticsViewModel
 import com.rudra.prayerallthetime.ui.screen.calendar.CalendarScreen
-import com.rudra.prayerallthetime.ui.screen.dashboard.DashboardScreen
+import com.rudra.prayerallthetime.ui.screen.calendar.CalendarViewModel
+import com.rudra.prayerallthetime.ui.screen.dashboard.CompleteDashboardScreen
+import com.rudra.prayerallthetime.ui.screen.dashboard.DashboardViewModel
+import com.rudra.prayerallthetime.ui.screen.explore.ExploreScreen
 import com.rudra.prayerallthetime.ui.screen.family.FamilyScreen
+import com.rudra.prayerallthetime.ui.screen.family.FamilyViewModel
 import com.rudra.prayerallthetime.ui.screen.prayer.PrayerViewModel
 import com.rudra.prayerallthetime.ui.screen.prayer.PrayersScreen
 import com.rudra.prayerallthetime.ui.screen.qibla.QiblaScreen
+import com.rudra.prayerallthetime.ui.screen.qibla.QiblaViewModel
 import com.rudra.prayerallthetime.ui.screen.quran.QuranHadithScreen
+import com.rudra.prayerallthetime.ui.screen.quran.QuranHadithViewModel
 import com.rudra.prayerallthetime.ui.screen.ramadan.RamadanScreen
+import com.rudra.prayerallthetime.ui.screen.ramadan.RamadanViewModel
+import com.rudra.prayerallthetime.ui.screen.report.ReportScreen
 import com.rudra.prayerallthetime.ui.screen.settings.SettingsScreen
 import com.rudra.prayerallthetime.ui.screen.settings.SettingsViewModel
 import com.rudra.prayerallthetime.ui.screen.tahajjud.TahajjudScreen
+import com.rudra.prayerallthetime.ui.screen.tahajjud.TahajjudViewModel
 import com.rudra.prayerallthetime.ui.screen.worship.WorshipScreen
+import com.rudra.prayerallthetime.ui.screen.worship.WorshipViewModel
 import com.rudra.prayerallthetime.ui.screen.wuduguide.WuduGuideScreen
+import com.rudra.prayerallthetime.ui.screen.wuduguide.WuduGuideViewModel
 import com.rudra.prayerallthetime.ui.theme.IslamicGold
 
 @Composable
 fun PremiumNavigation() {
     val navController = rememberNavController()
     val prayerViewModel: PrayerViewModel = hiltViewModel()
+    val dashboardViewModel: DashboardViewModel = hiltViewModel()
     val settingsViewModel: SettingsViewModel = hiltViewModel()
+    val analyticsViewModel: AnalyticsViewModel = hiltViewModel()
+    val quranHadithViewModel: QuranHadithViewModel = hiltViewModel()
+    val ramadanViewModel: RamadanViewModel = hiltViewModel()
+    val worshipViewModel: WorshipViewModel = hiltViewModel()
+    val familyViewModel: FamilyViewModel = hiltViewModel()
+    val qiblaViewModel: QiblaViewModel = hiltViewModel()
+    val calendarViewModel: CalendarViewModel = hiltViewModel()
+    val tahajjudViewModel: TahajjudViewModel = hiltViewModel()
+    val wuduGuideViewModel: WuduGuideViewModel = hiltViewModel()
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
@@ -84,13 +107,24 @@ fun PremiumNavigation() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Dashboard.route) {
-                DashboardScreen(
-                    prayerViewModel = prayerViewModel,
+                CompleteDashboardScreen(
+                    dashboardViewModel = dashboardViewModel,
                     navController = navController
                 )
             }
 
+            composable(Screen.Explore.route) {
+                ExploreScreen(navController = navController)
+            }
+
             composable(Screen.Prayers.route) {
+                PrayersScreen(
+                    prayerViewModel = prayerViewModel,
+                    navController = navController
+                )
+            }
+            
+            composable(Screen.PrayerTimes.route) {
                 PrayersScreen(
                     prayerViewModel = prayerViewModel,
                     navController = navController
@@ -149,13 +183,13 @@ fun PremiumNavigation() {
                 TahajjudScreen(navController = navController, prayerViewModel = prayerViewModel)
             }
 
-            // Placeholders for other screens
             composable(Screen.Tasbeeh.route) {
                 WorshipScreen(
                     navController = navController,
                     prayerViewModel = prayerViewModel
                 )
             }
+            
             composable(Screen.Charity.route) { Text("Charity Tracker Coming Soon") }
             composable(Screen.Profile.route) { Text("Profile Coming Soon") }
             composable(Screen.Notifications.route) { Text("Notifications Coming Soon") }
@@ -166,6 +200,14 @@ fun PremiumNavigation() {
             composable(Screen.RamadanTimer.route) { Text("Ramadan Timer Coming Soon") }
             composable(Screen.Taraweeh.route) { Text("Taraweeh Tracker Coming Soon") }
             composable(Screen.FamilyMember.route) { Text("Family Member Details Coming Soon") }
+            
+            composable(Screen.Hadith.route) {
+                com.rudra.prayerallthetime.ui.screen.hadith.HadithScreen(navController = navController)
+            }
+
+            composable(Screen.Report.route) {
+                ReportScreen(navController = navController)
+            }
         }
     }
 
@@ -210,7 +252,7 @@ fun PremiumTopAppBar(
                         .background(
                             brush = Brush.linearGradient(
                                 colors = listOf(IslamicGold, Color(0xFFFFD93D))
-                            )
+                              )
                         )
                         .padding(6.dp),
                     contentAlignment = Alignment.Center
@@ -285,7 +327,7 @@ fun PremiumBottomNavigationBar(
     ) {
         listOf(
             Screen.Dashboard,
-            Screen.Prayers,
+            Screen.Explore,
             Screen.QuranHadith,
             Screen.Analytics
         ).forEach { screen ->
@@ -327,121 +369,31 @@ fun PremiumBottomNavigationBar(
                                 modifier = Modifier.size(24.dp)
                             )
                         } ?: screen.emoji?.let {
-                            Text(
-                                text = it,
-                                fontSize = 20.sp
-                            )
+                            Text(text = it, fontSize = 24.sp)
                         }
                     }
                 },
                 label = {
                     Text(
                         text = screen.title,
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 11.sp
-                        )
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                     )
                 }
             )
         }
-
-        // Integrated Premium Button
-        NavigationBarItem(
-            selected = false,
-            onClick = onPremiumClick,
-            colors = NavigationBarItemDefaults.colors(
-                indicatorColor = Color.Transparent,
-                unselectedIconColor = IslamicGold,
-                unselectedTextColor = IslamicGold
-            ),
-            icon = {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(IslamicGold, Color(0xFFFFD93D))
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Premium",
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            },
-            label = {
-                Text(
-                    text = "Premium",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
-                    )
-                )
-            }
-        )
     }
 }
 
 @Composable
-fun PremiumFloatingActionButton(
-    navController: NavHostController,
-    prayerViewModel: PrayerViewModel
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Column(
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier
-            .padding(end = 16.dp)
-            .navigationBarsPadding()
-            .padding(bottom = 16.dp) // Added some extra padding to keep it above the nav bar
+fun PremiumFloatingActionButton(navController: NavHostController, prayerViewModel: PrayerViewModel) {
+    FloatingActionButton(
+        onClick = { navController.navigate(Screen.Report.route) },
+        containerColor = IslamicGold,
+        contentColor = Color.White,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.padding(bottom = 16.dp)
     ) {
-        if (expanded) {
-            ExtendedFloatingActionButton(
-                onClick = { navController.navigate(Screen.Qibla.route) },
-                containerColor = Color(0xFF4ECDC4)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Explore, contentDescription = null, tint = Color.White)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Find Qibla", color = Color.White)
-                }
-            }
-
-            ExtendedFloatingActionButton(
-                onClick = { navController.navigate(Screen.Worship.route) },
-                containerColor = Color(0xFF8B4513)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.FormatListBulleted, contentDescription = null, tint = Color.White)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Tasbeeh", color = Color.White)
-                }
-            }
-        }
-
-        FloatingActionButton(
-            onClick = { expanded = !expanded },
-            containerColor = IslamicGold,
-            modifier = Modifier.size(56.dp)
-        ) {
-            Icon(
-                if (expanded) Icons.Default.Close else Icons.Default.Add,
-                contentDescription = null,
-                tint = Color.White
-            )
-        }
+        Icon(Icons.Default.Assessment, contentDescription = "Report")
     }
-}
-
-@Composable
-fun Navigation() {
-    PremiumNavigation()
 }

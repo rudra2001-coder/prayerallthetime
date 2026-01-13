@@ -9,6 +9,9 @@ interface PrayerDao {
     @Query("SELECT * FROM prayer_records WHERE date = :date")
     fun getRecordsForDate(date: String): Flow<List<PrayerRecord>>
 
+    @Query("SELECT * FROM prayer_records WHERE date BETWEEN :startDate AND :endDate")
+    fun getRecordsInRange(startDate: String, endDate: String): Flow<List<PrayerRecord>>
+
     @Query("SELECT * FROM prayer_records WHERE date = :date AND prayerName = :prayerName LIMIT 1")
     suspend fun getRecord(date: String, prayerName: String): PrayerRecord?
 

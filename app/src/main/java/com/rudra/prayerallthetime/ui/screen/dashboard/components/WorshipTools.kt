@@ -27,8 +27,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.rudra.prayerallthetime.ui.theme.PrayerAllTheTimeTheme
 
 @Composable
 fun PremiumWorshipToolsPanel(
@@ -173,5 +175,27 @@ fun WorshipToolItem(
                 textAlign = TextAlign.Center
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PremiumWorshipToolsPanelPreview() {
+    PrayerAllTheTimeTheme {
+        PremiumWorshipToolsPanel()
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun WorshipToolItemPreview() {
+    PrayerAllTheTimeTheme {
+        WorshipToolItem(
+            title = "Tasbeeh",
+            value = "33 count",
+            icon = Icons.Default.AutoAwesome,
+            color = Color(0xFFD4AF37),
+            onClick = {}
+        )
     }
 }
