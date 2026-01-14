@@ -30,7 +30,7 @@ class PrayerRepository @Inject constructor(
 ) {
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     private val apiDateFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
-    private val timeFormat = java.text.SimpleDateFormat("hh:mm AM", Locale.getDefault())
+    private val timeFormat = java.text.SimpleDateFormat("hh:mm a", Locale.getDefault())
 
     suspend fun getPrayerTimes(latitude: Double, longitude: Double, date: LocalDate): PrayerData {
         val dateStr = date.format(dateFormatter)

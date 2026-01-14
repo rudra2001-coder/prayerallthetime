@@ -61,8 +61,8 @@ dependencies {
     testImplementation(libs.junit)
 
     // api for prayer time and ajan calender
-    implementation("com.github.persian-calendar:praytimes:2.1.2")
-    implementation("dev.kosrat:muslimdata:2.7.1")
+  //  implementation("com.github.persian-calendar:praytimes:2.1.2")
+   // implementation("dev.kosrat:muslimdata:2.7.1")
 
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.1.3")

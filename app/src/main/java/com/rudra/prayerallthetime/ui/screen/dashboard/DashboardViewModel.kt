@@ -66,6 +66,9 @@ class DashboardViewModel @Inject constructor(
     val currentSurah = localSettings.currentSurah.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Al-Fatihah")
     val tahajjudTimeStr = localSettings.tahajjudTime.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "03:45 AM")
 
+    private val _completedPrayers = MutableStateFlow<Set<String>>(emptySet())
+    val completedPrayers: StateFlow<Set<String>> = _completedPrayers.asStateFlow()
+
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     private val todayStr = LocalDate.now().format(dateFormatter)
 
@@ -73,6 +76,7 @@ class DashboardViewModel @Inject constructor(
         loadInitialData()
         loadLocalCounts()
         fetchHadithOfTheDay()
+        loadCompletedPrayers()
     }
 
     private fun loadInitialData() {
@@ -106,6 +110,14 @@ class DashboardViewModel @Inject constructor(
             
             val taraweehRecord = prayerDao.getTaraweehForDate(todayStr)
             taraweehCount.value = taraweehRecord?.rakatCount ?: 0
+        }
+    }
+
+    private fun loadCompletedPrayers() {
+        viewModelScope.launch {
+            prayerDao.getRecordsForDate(todayStr).collect { records ->
+                _completedPrayers.value = records.filter { it.isCompleted }.map { it.prayerName }.toSet()
+            }
         }
     }
 
@@ -182,6 +194,36 @@ class DashboardViewModel @Inject constructor(
                 val completedCount = prayerOnlyList.count { it.isPrayed }
                 completionRate.value = if (prayerOnlyList.isNotEmpty()) completedCount.toFloat() / prayerOnlyList.size else 0f
             }
+        }
+    }
+
+    fun togglePrayerByName(prayerName: String) {
+        viewModelScope.launch {
+            val record = prayerDao.getRecord(todayStr, prayerName)
+            val newStatus = if (record != null) !record.isCompleted else true
+            
+            if (record != null) {
+                prayerDao.insertRecord(record.copy(isCompleted = newStatus))
+            } else {
+                prayerDao.insertRecord(PrayerRecord(date = todayStr, prayerName = prayerName, isCompleted = newStatus))
+            }
+            
+            // Also sync the _prayers list for UI consistency
+            val currentList = _prayers.value.toMutableList()
+            val index = currentList.indexOfFirst { it.name == prayerName }
+            if (index != -1) {
+                currentList[index] = currentList[index].copy(isPrayed = newStatus)
+                _prayers.value = currentList
+            }
+        }
+    }
+
+    fun addTodayToStreak() {
+        viewModelScope.launch {
+            // Logic to increment streak in LocalSettings or DB
+            val current = currentStreak.value
+            currentStreak.value = current + 1
+            // You might want to persist this in LocalSettings
         }
     }
 

@@ -46,6 +46,13 @@ fun CompleteDashboardScreen(
     val cityName by dashboardViewModel.cityName.collectAsState()
     val completionRate by dashboardViewModel.completionRate.collectAsState()
     val currentStreak by dashboardViewModel.currentStreak.collectAsState()
+    val completedPrayers by dashboardViewModel.completedPrayers.collectAsState()
+
+    // Worship Tools Data
+    val tasbeehCount by dashboardViewModel.tasbeehCount.collectAsState()
+    val currentSurah by dashboardViewModel.currentSurah.collectAsState()
+    val wuduStatus by dashboardViewModel.wuduStatus.collectAsState()
+    val tahajjudTime by dashboardViewModel.tahajjudTimeStr.collectAsState()
 
     Scaffold(
         topBar = {
@@ -134,19 +141,60 @@ fun CompleteDashboardScreen(
                 )
             }
 
-            // 3: PrayerClocksSection
+            // 3: PremiumStreaksCard (Interactive)
+            item {
+                PremiumStreaksCard(
+                    currentStreakData = StreakData(
+                        id = 1,
+                        name = "Daily Prayer Streak",
+                        description = "Consecutive days of completing all 5 prayers",
+                        days = currentStreak,
+                        color = Color(0xFFFF6B6B),
+                        icon = Icons.Default.Fireplace,
+                        nextMilestone = 30
+                    ),
+                    completedPrayers = completedPrayers,
+                    onTogglePrayer = { prayerName ->
+                        dashboardViewModel.togglePrayerByName(prayerName)
+                    },
+                    onAddDay = {
+                        dashboardViewModel.addTodayToStreak()
+                    },
+                    onViewAll = { navController.navigate(Screen.Streaks.route) },
+                    onStreakClick = { streak ->
+                        navController.navigate(Screen.StreakDetails.route + "/${streak.id}")
+                    }
+                )
+            }
+
+            // 4: Worship Tools Panel
+            item {
+                PremiumWorshipToolsPanel(
+                    tasbeehCount = tasbeehCount,
+                    currentSurah = currentSurah,
+                    wuduStatus = wuduStatus,
+                    tahajjudTime = tahajjudTime,
+                    onTasbeehClick = { navController.navigate(Screen.Tasbeeh.route) },
+                    onQiblaClick = { navController.navigate(Screen.Qibla.route) },
+                    onQuranClick = { navController.navigate(Screen.QuranHadith.route) },
+                    onWuduClick = { navController.navigate(Screen.Wudu.route) },
+                    onTahajjudClick = { navController.navigate(Screen.Tahajjud.route) },
+                    onPrayerTimesClick = { navController.navigate(Screen.PrayerTimes.route) }
+                )
+            }
+
+            // 5: PrayerClocksSection
             item {
                 PrayerClocksSection(
                     prayers = prayers,
                     onPrayerClick = { prayer ->
                         dashboardViewModel.togglePrayerState(prayer)
-                        navController.navigate(Screen.PrayerTimes.route + "/${prayer.name}")
                     },
                     modifier = Modifier.padding(horizontal = 4.dp)
                 )
             }
 
-            // 4: PrayerTimeline
+            // 6: PrayerTimeline
             item {
                 Card(
                     modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
@@ -157,18 +205,18 @@ fun CompleteDashboardScreen(
                 }
             }
 
-            // 5: EnhancedProgressCard
+            // 7: EnhancedProgressCard
             item {
                 EnhancedProgressCard(
                     completionPercentage = completionRate,
                     completed = prayers.count { it.isPrayed },
                     total = prayers.size,
                     onAnalyticsClick = { navController.navigate(Screen.Analytics.route) },
-                    modifier = Modifier.padding(horizontal = 0.dp) // Internal padding already exists
+                    modifier = Modifier.padding(horizontal = 0.dp)
                 )
             }
 
-            // 6: QuickInsights
+            // 8: QuickInsights
             item {
                 QuickInsights(
                     insights = listOf(
