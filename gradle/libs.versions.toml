@@ -11,11 +11,13 @@ composeBom = "2024.09.00"
 ksp = "2.1.0-1.0.29"
 lifecycleViewmodelCompose = "2.10.0"
 navigationCompose = "2.9.6"
-adhan = "1.2.1"
 retrofit = "2.11.0"
 playServicesLocation = "21.3.0"
 foundation = "1.10.0"
 hilt = "2.51.1"
+praytimes = "2.1.2"
+muslimdata = "2.7.1"
+
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -33,11 +35,12 @@ androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "u
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
-adhan = { group = "com.batoulapps.adhan", name = "adhan", version.ref = "adhan" }
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
+praytimes = { group = "com.github.persian-calendar", name = "praytimes", version.ref = "praytimes" }
+muslimdata = { group = "dev.kosrat", name = "muslimdata", version.ref = "muslimdata" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
