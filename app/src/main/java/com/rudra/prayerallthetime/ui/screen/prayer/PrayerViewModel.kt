@@ -14,6 +14,7 @@ import com.rudra.prayerallthetime.data.local.TasbeehRecord
 import com.rudra.prayerallthetime.data.repository.PrayerRepository
 
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -94,8 +95,28 @@ class PrayerViewModel @Inject constructor(
         loadInitialData()
         loadLocalTasbeeh()
         loadLocalTaraweeh()
+        startCountdownTicker()
     }
     
+    private fun startCountdownTicker() {
+        viewModelScope.launch {
+            while (true) {
+                if (nextPrayerMillis.value > 0) {
+                    val diff = nextPrayerMillis.value - System.currentTimeMillis()
+                    if (diff > 0) {
+                        val hours = (diff / (1000 * 60 * 60))
+                        val minutes = (diff / (1000 * 60)) % 60
+                        val seconds = (diff / 1000) % 60
+                        countdown.value = String.format("%02d:%02d:%02d", hours, minutes, seconds)
+                    } else if (diff < -5000) {
+                        refreshData()
+                    }
+                }
+                delay(1000)
+            }
+        }
+    }
+
     private fun loadInitialData() {
         viewModelScope.launch {
             localSettings.userLocation.collectLatest { savedLocation ->

@@ -11,10 +11,13 @@ import com.rudra.prayerallthetime.data.repository.HadithRepository
 import com.rudra.prayerallthetime.data.repository.PrayerRepository
 import com.rudra.prayerallthetime.ui.screen.prayer.PrayerData
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -26,14 +29,17 @@ class DashboardViewModel @Inject constructor(
     private val hadithRepository: HadithRepository
 ) : ViewModel() {
 
+    private val defaultLat = 23.8103
+    private val defaultLon = 90.4125
+
     private val _prayers = MutableStateFlow<List<Prayer>>(emptyList())
     val prayers: StateFlow<List<Prayer>> = _prayers.asStateFlow()
 
-    private val _cityName = MutableStateFlow("Detecting...")
+    private val _cityName = MutableStateFlow("Dhaka")
     val cityName: StateFlow<String> = _cityName.asStateFlow()
 
     val nextPrayerName = MutableStateFlow("Fajr")
-    val nextPrayerArabicName = MutableStateFlow("")
+    val nextPrayerArabicName = MutableStateFlow("الفجر")
     val countdown = MutableStateFlow("00:00:00")
     val nextPrayerMillis = MutableStateFlow(0L)
     val sunriseTime = MutableStateFlow("--:--")
@@ -41,30 +47,20 @@ class DashboardViewModel @Inject constructor(
     val gregorianDate = MutableStateFlow(LocalDate.now().toString())
     val qiblaDirection = MutableStateFlow(0f)
 
-    val isRamadan = MutableStateFlow(true)
-    val tasbeehCount = MutableStateFlow(0)
-    val taraweehCount = MutableStateFlow(0)
-    val currentStreak = MutableStateFlow(7)
+    // Live Current Time
+    private val _currentTime = MutableStateFlow(LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.getDefault())))
+    val currentTime: StateFlow<String> = _currentTime.asStateFlow()
+
     val completionRate = MutableStateFlow(0.0f)
-
-    val suhoorTime = MutableStateFlow("--:--")
-    val iftarTime = MutableStateFlow("--:--")
-    val ramadanDay = MutableStateFlow(0)
-
-    val ayatArabic = MutableStateFlow("بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ")
-    val ayatEnglish = MutableStateFlow("In the name of Allah, the Entirely Merciful, the Especially Merciful.")
-    val surahInfo = MutableStateFlow("Al-Fatihah 1:1")
-    
-    val hadithArabic = MutableStateFlow("خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ")
-    val hadithEnglish = MutableStateFlow("The best among you are those who learn the Quran and teach it.")
-    val hadithInfo = MutableStateFlow("Sahih al-Bukhari")
-    
-    val isAyatBookmarked = MutableStateFlow(false)
-    val isHadithBookmarked = MutableStateFlow(false)
-
+    val currentStreak = MutableStateFlow(7)
+    val tasbeehCount = MutableStateFlow(0)
     val wuduStatus = localSettings.wuduStatus.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val currentSurah = localSettings.currentSurah.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Al-Fatihah")
     val tahajjudTimeStr = localSettings.tahajjudTime.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "03:45 AM")
+
+    val hadithArabic = MutableStateFlow("خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ")
+    val hadithEnglish = MutableStateFlow("The best among you are those who learn the Quran and teach it.")
+    val hadithInfo = MutableStateFlow("Sahih al-Bukhari")
 
     private val _completedPrayers = MutableStateFlow<Set<String>>(emptySet())
     val completedPrayers: StateFlow<Set<String>> = _completedPrayers.asStateFlow()
@@ -77,39 +73,125 @@ class DashboardViewModel @Inject constructor(
         loadLocalCounts()
         fetchHadithOfTheDay()
         loadCompletedPrayers()
+        startTimeTickers()
     }
 
-    private fun loadInitialData() {
+    private fun startTimeTickers() {
         viewModelScope.launch {
-            localSettings.userLocation.collectLatest { savedLocation ->
-                if (savedLocation != null) {
-                    _cityName.value = localSettings.cityName.first() ?: "Unknown"
-                    fetchPrayerTimes(savedLocation.first, savedLocation.second)
-                } else {
-                    refreshLocation()
+            while (true) {
+                // Update Current Time
+                _currentTime.value = LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.getDefault()))
+
+                // Update Countdown
+                if (nextPrayerMillis.value > 0) {
+                    val diff = nextPrayerMillis.value - System.currentTimeMillis()
+                    if (diff > 0) {
+                        val hours = (diff / (1000 * 60 * 60))
+                        val minutes = (diff / (1000 * 60)) % 60
+                        val seconds = (diff / 1000) % 60
+                        countdown.value = String.format("%02d:%02d:%02d", hours, minutes, seconds)
+                    } else if (diff < -2000) { // If prayer time just passed, refresh
+                        refreshPrayerData()
+                    }
                 }
+                delay(1000)
             }
         }
     }
 
-    private fun fetchHadithOfTheDay() {
+    private fun loadInitialData() {
         viewModelScope.launch {
-            val hadith = hadithRepository.getRandomHadith()
-            if (hadith != null) {
-                hadithArabic.value = hadith.hadithArabic ?: ""
-                hadithEnglish.value = hadith.hadithEnglish ?: ""
-                hadithInfo.value = "${hadith.book.bookName}, Hadith ${hadith.hadithNumber}"
+            val savedLocation = localSettings.userLocation.first()
+            if (savedLocation != null) {
+                _cityName.value = localSettings.cityName.first() ?: "My Location"
+                fetchPrayerTimes(savedLocation.first, savedLocation.second)
+            } else {
+                fetchPrayerTimes(defaultLat, defaultLon)
+                refreshLocation()
             }
+        }
+    }
+
+    private fun fetchPrayerTimes(lat: Double, lon: Double) {
+        viewModelScope.launch {
+            try {
+                val data = prayerRepository.getPrayerTimes(lat, lon, LocalDate.now())
+                nextPrayerName.value = data.nextPrayer.name
+                nextPrayerArabicName.value = data.nextPrayer.arabicName
+                nextPrayerMillis.value = data.nextPrayerMillis
+                sunriseTime.value = data.sunrise
+                hijriDate.value = data.hijriDate
+                gregorianDate.value = data.gregorianDate
+                qiblaDirection.value = data.qiblaDirection.replace("°", "").toFloatOrNull() ?: 0f
+                syncPrayersWithLocalDb(data)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun refreshPrayerData() {
+        viewModelScope.launch {
+            val location = localSettings.userLocation.first() ?: (defaultLat to defaultLon)
+            fetchPrayerTimes(location.first, location.second)
+        }
+    }
+
+    private suspend fun syncPrayersWithLocalDb(data: PrayerData) {
+        val localRecords = prayerDao.getRecordsForDate(todayStr).first()
+        val prayerList = data.allPrayers.map { detail ->
+            val isPrayed = localRecords.find { it.prayerName == detail.name }?.isCompleted ?: false
+            Prayer(detail.name, detail.time, isPrayed)
+        }
+        _prayers.value = prayerList
+        
+        val prayerOnlyList = prayerList.filter { it.name != "Sunrise" }
+        val completedCount = prayerOnlyList.count { it.isPrayed }
+        completionRate.value = if (prayerOnlyList.isNotEmpty()) completedCount.toFloat() / prayerOnlyList.size else 0f
+    }
+
+    fun togglePrayerByName(prayerName: String) {
+        viewModelScope.launch {
+            val record = prayerDao.getRecord(todayStr, prayerName)
+            val newStatus = if (record != null) !record.isCompleted else true
+            if (record != null) prayerDao.insertRecord(record.copy(isCompleted = newStatus))
+            else prayerDao.insertRecord(PrayerRecord(date = todayStr, prayerName = prayerName, isCompleted = newStatus))
+            
+            val currentList = _prayers.value.toMutableList()
+            val index = currentList.indexOfFirst { it.name == prayerName }
+            if (index != -1) {
+                currentList[index] = currentList[index].copy(isPrayed = newStatus)
+                _prayers.value = currentList
+            }
+        }
+    }
+
+    fun togglePrayerState(prayer: Prayer) = togglePrayerByName(prayer.name)
+
+    fun refreshLocation() {
+        viewModelScope.launch {
+            try {
+                val location = locationService.getCurrentLocation()
+                localSettings.saveLocation(location.latitude, location.longitude, "My Location")
+                _cityName.value = "My Location"
+                fetchPrayerTimes(location.latitude, location.longitude)
+            } catch (e: Exception) {}
         }
     }
 
     private fun loadLocalCounts() {
         viewModelScope.launch {
-            val tasbeehRecord = prayerDao.getTasbeehForDate(todayStr)
-            tasbeehCount.value = tasbeehRecord?.totalCount ?: 0
-            
-            val taraweehRecord = prayerDao.getTaraweehForDate(todayStr)
-            taraweehCount.value = taraweehRecord?.rakatCount ?: 0
+            prayerDao.getTasbeehForDate(todayStr)?.let { tasbeehCount.value = it.totalCount }
+        }
+    }
+
+    private fun fetchHadithOfTheDay() {
+        viewModelScope.launch {
+            hadithRepository.getRandomHadith()?.let {
+                hadithArabic.value = it.hadithArabic ?: ""
+                hadithEnglish.value = it.hadithEnglish ?: ""
+                hadithInfo.value = "${it.book.bookName}, Hadith ${it.hadithNumber}"
+            }
         }
     }
 
@@ -121,125 +203,10 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    private fun fetchPrayerTimes(lat: Double, lon: Double) {
-        viewModelScope.launch {
-            try {
-                val data = prayerRepository.getPrayerTimes(lat, lon, LocalDate.now())
-                nextPrayerName.value = data.nextPrayer.name
-                nextPrayerArabicName.value = data.nextPrayer.arabicName
-                countdown.value = data.countdown
-                nextPrayerMillis.value = data.nextPrayerMillis
-                sunriseTime.value = data.sunrise
-                hijriDate.value = data.hijriDate
-                gregorianDate.value = data.gregorianDate
-                qiblaDirection.value = data.qiblaDirection.replace("°", "").toFloatOrNull() ?: 0f
-                
-                suhoorTime.value = data.allPrayers.find { it.name.equals("Fajr", true) }?.time ?: "--:--"
-                iftarTime.value = data.allPrayers.find { it.name.equals("Maghrib", true) }?.time ?: "--:--"
-                
-                syncPrayersWithLocalDb(data)
-            } catch (e: Exception) {
-                // Error handling
-            }
-        }
-    }
-
-    private suspend fun syncPrayersWithLocalDb(data: PrayerData) {
-        val localRecords = prayerDao.getRecordsForDate(todayStr).first()
-        
-        val prayerList = data.allPrayers.map { detail ->
-            val isPrayed = localRecords.find { it.prayerName == detail.name }?.isCompleted ?: false
-            Prayer(detail.name, detail.time, isPrayed)
-        }
-        _prayers.value = prayerList
-        
-        // Update completion rate
-        val prayerOnlyList = prayerList.filter { it.name != "Sunrise" }
-        val completedCount = prayerOnlyList.count { it.isPrayed }
-        completionRate.value = if (prayerOnlyList.isNotEmpty()) completedCount.toFloat() / prayerOnlyList.size else 0f
-    }
-
-    fun refreshLocation() {
-        viewModelScope.launch {
-            try {
-                val location = locationService.getCurrentLocation()
-                val city = "Current Location" 
-                localSettings.saveLocation(location.latitude, location.longitude, city)
-                _cityName.value = city
-                fetchPrayerTimes(location.latitude, location.longitude)
-            } catch (e: Exception) {
-                // Error handling
-            }
-        }
-    }
-
-    fun togglePrayerState(prayer: Prayer) {
-        viewModelScope.launch {
-            val newStatus = !prayer.isPrayed
-            val currentList = _prayers.value.toMutableList()
-            val index = currentList.indexOfFirst { it.name == prayer.name }
-            if (index != -1) {
-                currentList[index] = currentList[index].copy(isPrayed = newStatus)
-                _prayers.value = currentList
-                
-                val record = prayerDao.getRecord(todayStr, prayer.name)
-                if (record != null) {
-                    prayerDao.insertRecord(record.copy(isCompleted = newStatus))
-                } else {
-                    prayerDao.insertRecord(PrayerRecord(date = todayStr, prayerName = prayer.name, isCompleted = newStatus))
-                }
-                
-                // Refresh completion rate
-                val prayerOnlyList = currentList.filter { it.name != "Sunrise" }
-                val completedCount = prayerOnlyList.count { it.isPrayed }
-                completionRate.value = if (prayerOnlyList.isNotEmpty()) completedCount.toFloat() / prayerOnlyList.size else 0f
-            }
-        }
-    }
-
-    fun togglePrayerByName(prayerName: String) {
-        viewModelScope.launch {
-            val record = prayerDao.getRecord(todayStr, prayerName)
-            val newStatus = if (record != null) !record.isCompleted else true
-            
-            if (record != null) {
-                prayerDao.insertRecord(record.copy(isCompleted = newStatus))
-            } else {
-                prayerDao.insertRecord(PrayerRecord(date = todayStr, prayerName = prayerName, isCompleted = newStatus))
-            }
-            
-            // Also sync the _prayers list for UI consistency
-            val currentList = _prayers.value.toMutableList()
-            val index = currentList.indexOfFirst { it.name == prayerName }
-            if (index != -1) {
-                currentList[index] = currentList[index].copy(isPrayed = newStatus)
-                _prayers.value = currentList
-            }
-        }
-    }
-
-    fun addTodayToStreak() {
-        viewModelScope.launch {
-            // Logic to increment streak in LocalSettings or DB
-            val current = currentStreak.value
-            currentStreak.value = current + 1
-            // You might want to persist this in LocalSettings
-        }
-    }
-
-    fun toggleWuduStatus() {
-        viewModelScope.launch {
-            localSettings.updateWuduStatus(!wuduStatus.value)
-        }
-    }
-
-    fun toggleAyatBookmark() { isAyatBookmarked.value = !isAyatBookmarked.value }
-    fun toggleHadithBookmark() { isHadithBookmarked.value = !isHadithBookmarked.value }
-    fun shareContent(content: String) {}
-    fun playAudio(text: String) {}
-    
     fun getNextPrayerTime(): String = prayers.value.find { it.name == nextPrayerName.value }?.time ?: "--:--"
-    fun isAlarmSet(): Boolean = true
-    fun getQiblaDirection(): Float = qiblaDirection.value
+    fun isAlarmSet() = true
+    fun getQiblaDirection() = qiblaDirection.value
     fun toggleAlarm() {}
+    fun addTodayToStreak() { currentStreak.value++ }
+    fun toggleWuduStatus() { viewModelScope.launch { localSettings.updateWuduStatus(!wuduStatus.value) } }
 }

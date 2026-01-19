@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,7 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import com.rudra.prayerallthetime.data.Prayer
 import com.rudra.prayerallthetime.ui.theme.PrayerAllTheTimeTheme
 import kotlin.math.cos
@@ -30,33 +31,38 @@ import kotlin.math.sin
 
 @Composable
 fun PrayerClocksSection(
-
     prayers: List<Prayer>,
     onPrayerClick: (Prayer) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    // Filter out Sunrise to show only the 5 daily prayers
+    val dailyPrayers = prayers.filter { it.name != "Sunrise" }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 16.dp)
+            .padding(vertical = 12.dp)
     ) {
         Text(
-            text = "Prayer Clocks",
+            text = "Prayer Times Status",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
         )
-        Row(
+        
+        // Using a LazyRow to ensure all items fit nicely and keep them all visible
+        LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(end = 16.dp)
         ) {
-            prayers.forEach { prayer ->
+            items(dailyPrayers) { prayer ->
                 PrayerClockItem(
                     prayer = prayer,
                     onClick = { onPrayerClick(prayer) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.width(90.dp) // Fixed width to keep consistency
                 )
             }
         }
@@ -71,32 +77,32 @@ fun PrayerClockItem(
 ) {
     Card(
         modifier = modifier.clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (prayer.isPrayed) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
+            containerColor = if (prayer.isPrayed) Color(0xFFE8F5E9) // Light Green
                              else MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = if (!prayer.isPrayed) androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f)) else null
     ) {
         Column(
             modifier = Modifier
-                .padding(8.dp)
+                .padding(vertical = 12.dp, horizontal = 4.dp)
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
                 text = prayer.name,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = if (prayer.isPrayed) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary
             )
             
-            // Visual Clock Representation
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .padding(4.dp),
+                    .size(42.dp)
+                    .padding(2.dp),
                 contentAlignment = Alignment.Center
             ) {
                 AnalogClockFace(time = prayer.time, isDone = prayer.isPrayed)
@@ -104,23 +110,29 @@ fun PrayerClockItem(
 
             Text(
                 text = prayer.time,
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (prayer.isPrayed) Color(0xFF2E7D32).copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Icon(
-                imageVector = if (prayer.isPrayed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                contentDescription = if (prayer.isPrayed) "Done" else "Pending",
-                tint = if (prayer.isPrayed) Color(0xFF4CAF50) else Color.Gray.copy(alpha = 0.5f),
-                modifier = Modifier.size(16.dp)
-            )
-            
-            Text(
-                text = if (prayer.isPrayed) "Done" else "Pending",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-                color = if (prayer.isPrayed) Color(0xFF4CAF50) else Color.Gray
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = if (prayer.isPrayed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (prayer.isPrayed) Color(0xFF4CAF50) else Color.Gray.copy(alpha = 0.3f),
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = if (prayer.isPrayed) "Done" else "Wait",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (prayer.isPrayed) Color(0xFF4CAF50) else Color.Gray
+                )
+            }
         }
     }
 }
@@ -131,38 +143,39 @@ fun AnalogClockFace(time: String, isDone: Boolean) {
         val parts = time.split(":", " ")
         var h = parts[0].toInt()
         val m = parts[1].toInt()
-        if (time.contains("PM") && h != 12) h += 12
-        if (time.contains("AM") && h == 12) h = 0
+        if (time.contains("PM", ignoreCase = true) && h != 12) h += 12
+        if (time.contains("AM", ignoreCase = true) && h == 12) h = 0
         h to m
     } catch (e: Exception) {
         0 to 0
     }
 
-    val secondaryColor = if (isDone) Color(0xFF4CAF50) else Color.Gray
+    val primaryColor = if (isDone) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary
+    val secondaryColor = if (isDone) Color(0xFF2E7D32).copy(alpha = 0.5f) else Color.Gray.copy(alpha = 0.3f)
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         val center = Offset(size.width / 2, size.height / 2)
         val radius = size.minDimension / 2
 
-        // Outer circle
+        // Outer ring
         drawCircle(
-            color = secondaryColor.copy(alpha = 0.2f),
+            color = secondaryColor,
             radius = radius,
             center = center,
-            style = Stroke(width = 2.dp.toPx())
+            style = Stroke(width = 1.5.dp.toPx())
         )
 
         // Hour hand
         val hourAngle = (hour % 12 + minute / 60f) * 30f - 90f
         val hourLen = radius * 0.5f
         drawLine(
-            color = secondaryColor,
+            color = primaryColor,
             start = center,
             end = Offset(
                 center.x + hourLen * cos(Math.toRadians(hourAngle.toDouble())).toFloat(),
                 center.y + hourLen * sin(Math.toRadians(hourAngle.toDouble())).toFloat()
             ),
-            strokeWidth = 3.dp.toPx(),
+            strokeWidth = 2.5.dp.toPx(),
             cap = StrokeCap.Round
         )
 
@@ -170,20 +183,19 @@ fun AnalogClockFace(time: String, isDone: Boolean) {
         val minAngle = minute * 6f - 90f
         val minLen = radius * 0.8f
         drawLine(
-            color = secondaryColor.copy(alpha = 0.7f),
+            color = primaryColor.copy(alpha = 0.6f),
             start = center,
             end = Offset(
                 center.x + minLen * cos(Math.toRadians(minAngle.toDouble())).toFloat(),
                 center.y + minLen * sin(Math.toRadians(minAngle.toDouble())).toFloat()
             ),
-            strokeWidth = 2.dp.toPx(),
+            strokeWidth = 1.5.dp.toPx(),
             cap = StrokeCap.Round
         )
         
-        // Center dot
         drawCircle(
-            color = secondaryColor,
-            radius = 2.dp.toPx(),
+            color = primaryColor,
+            radius = 1.5.dp.toPx(),
             center = center
         )
     }
@@ -201,16 +213,5 @@ fun PrayerClocksSectionPreview() {
     )
     PrayerAllTheTimeTheme {
         PrayerClocksSection(prayers = samplePrayers)
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PrayerClockItemPreview() {
-    PrayerAllTheTimeTheme {
-        PrayerClockItem(
-            prayer = Prayer(name = "Fajr", time = "05:15 AM", isPrayed = true),
-            onClick = {}
-        )
     }
 }
