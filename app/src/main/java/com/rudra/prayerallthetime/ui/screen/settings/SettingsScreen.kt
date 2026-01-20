@@ -1,45 +1,32 @@
 package com.rudra.prayerallthetime.ui.screen.settings
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.OfflinePin
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.rudra.prayerallthetime.ui.navigation.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController,
-    settingsViewModel: SettingsViewModel = viewModel()
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val notificationsEnabled by settingsViewModel.notificationsEnabled.collectAsState()
     val darkModeEnabled by settingsViewModel.darkModeEnabled.collectAsState()
     val locationEnabled by settingsViewModel.locationEnabled.collectAsState()
     val premiumEnabled by settingsViewModel.premiumEnabled.collectAsState()
+
+    var showResetDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -92,12 +79,6 @@ fun SettingsScreen(
                 }
             )
 
-            ListItem(
-                headlineContent = { Text("Language") },
-                supportingContent = { Text("English (US)") },
-                leadingContent = { Icon(Icons.Default.Language, contentDescription = null) }
-            )
-
             HorizontalDivider()
 
             Text(
@@ -140,22 +121,54 @@ fun SettingsScreen(
                 }
             )
 
+            HorizontalDivider()
+
+            Text(
+                text = "Danger Zone",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.Red,
+                modifier = Modifier.padding(16.dp)
+            )
+
             ListItem(
-                headlineContent = { Text("Offline Mode") },
-                supportingContent = { Text("Access prayer times without internet") },
-                leadingContent = { Icon(Icons.Default.OfflinePin, contentDescription = null) },
+                headlineContent = { Text("Reset Full App", color = Color.Red) },
+                supportingContent = { Text("Clear all prayer records, streaks, and settings") },
+                leadingContent = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = Color.Red) },
+                modifier = Modifier.padding(bottom = 24.dp),
                 trailingContent = {
-                    Switch(
-                        checked = false,
-                        onCheckedChange = { /* Placeholder */ }
-                    )
+                    TextButton(onClick = { showResetDialog = true }) {
+                        Text("Reset", color = Color.Red)
+                    }
                 }
             )
-            
-            ListItem(
-                headlineContent = { Text("App Version") },
-                supportingContent = { Text("1.0.0") }
-            )
         }
+    }
+
+    if (showResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDialog = false },
+            title = { Text("Confirm Full Reset") },
+            text = { Text("This will permanently delete all your prayer records, habits, and settings. This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        settingsViewModel.resetFullApp {
+                            showResetDialog = false
+                            navController.navigate(Screen.Dashboard.route) {
+                                popUpTo(0)
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Reset Everything")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

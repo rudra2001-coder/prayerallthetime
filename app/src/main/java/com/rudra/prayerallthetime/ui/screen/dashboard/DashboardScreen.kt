@@ -46,6 +46,7 @@ fun CompleteDashboardScreen(
     val cityName by dashboardViewModel.cityName.collectAsState()
     val completionRate by dashboardViewModel.completionRate.collectAsState()
     val currentStreak by dashboardViewModel.currentStreak.collectAsState()
+    val weeklyCompletion by dashboardViewModel.weeklyCompletion.collectAsState()
     val completedPrayers by dashboardViewModel.completedPrayers.collectAsState()
 
     // Worship Tools Data
@@ -92,7 +93,7 @@ fun CompleteDashboardScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0F1B4C)), // Unified with HeroCard
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0F1B4C)), 
                 actions = {
                     IconButton(onClick = { navController.navigate(Screen.Notifications.route) }) {
                         BadgedBox(
@@ -150,7 +151,7 @@ fun CompleteDashboardScreen(
             item {
                 WeeklyStreakTracker(
                     streakCount = currentStreak,
-                    weeklyCompletion = listOf(true, true, true, true, true, false, true), // Sample data
+                    weeklyCompletion = weeklyCompletion,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
@@ -159,8 +160,6 @@ fun CompleteDashboardScreen(
             item {
                 DuaOfTheDaySection(dua = dailyDua)
             }
-
-
 
             // 4: Worship Tools Panel
             item {
@@ -217,24 +216,17 @@ fun CompleteDashboardScreen(
                     insights = listOf(
                         InsightData(
                             title = "Performance Insight",
-                            description = "You're most consistent with Fajr prayers this week. Keep it up!",
+                            description = if (completionRate > 0.8f) "MashAllah! Your consistency is excellent today." else "Try to complete all prayers to maintain your streak.",
                             icon = Icons.Default.TipsAndUpdates,
                             backgroundColor = Color(0xFFE3F2FD),
                             tintColor = Color(0xFF1976D2)
                         ),
                         InsightData(
-                            title = "Improvement Suggestion",
-                            description = "Try to log your Dhuhr prayer immediately after performing it to maintain accuracy.",
+                            title = "Daily Tip",
+                            description = "Use the Tasbeeh counter after prayers for extra rewards.",
                             icon = Icons.Default.Lightbulb,
                             backgroundColor = Color(0xFFFFF3E0),
                             tintColor = Color(0xFFF57C00)
-                        ),
-                        InsightData(
-                            title = "Streak Milestone",
-                            description = "You're 3 days away from beating your personal best streak of 30 days!",
-                            icon = Icons.Default.Star,
-                            backgroundColor = Color(0xFFF3E5F5),
-                            tintColor = Color(0xFF9C27B0)
                         )
                     )
                 )

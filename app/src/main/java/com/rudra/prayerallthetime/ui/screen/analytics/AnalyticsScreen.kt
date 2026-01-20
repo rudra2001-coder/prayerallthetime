@@ -49,7 +49,15 @@ fun AnalyticsScreen(
     val weeklyDayData by prayerViewModel.weeklyDayData.collectAsState()
     val earnedBadges by prayerViewModel.earnedBadges.collectAsState()
     
-    val mainStreak = getMainStreak().copy(days = currentStreak)
+    val mainStreak = StreakData(
+        id = 1,
+        name = "Prayer Streak",
+        description = "Consecutive days of all 5 prayers",
+        days = currentStreak,
+        color = Color(0xFFFF6B6B),
+        icon = Icons.Default.Whatshot,
+        nextMilestone = if (currentStreak < 10) 10 else if (currentStreak < 30) 30 else currentStreak + 10
+    )
     val completedPrayers = prayers.filter { it.isPrayed }.map { it.name }.toSet()
 
     LazyColumn(
@@ -96,7 +104,7 @@ fun AnalyticsScreen(
         }
 
         item {
-            ConsistencyInsights()
+            ConsistencyInsights(completionRate = prayerViewModel.completionRate.collectAsState().value)
         }
     }
 }
@@ -160,7 +168,7 @@ fun StreakCard(streakData: StreakData, onStreakClick: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     LinearProgressIndicator(
-                        progress = { (streakData.days.toFloat() / streakData.nextMilestone).coerceIn(0f, 1f) },
+                        progress = { (streakData.days.toFloat() / streakData.nextMilestone.toFloat()).coerceIn(0f, 1f) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
@@ -178,7 +186,6 @@ fun StreakCard(streakData: StreakData, onStreakClick: () -> Unit) {
                 
                 Spacer(modifier = Modifier.width(16.dp))
                 
-                // Animated Flame Icon
                 Box(
                     modifier = Modifier
                         .size(80.dp)
@@ -483,7 +490,7 @@ fun BadgeItem(badge: Badge) {
 }
 
 @Composable
-fun ConsistencyInsights() {
+fun ConsistencyInsights(completionRate: Float) {
     Card(
         modifier = Modifier
             .padding(24.dp)
@@ -510,7 +517,10 @@ fun ConsistencyInsights() {
                     fontSize = 14.sp
                 )
                 Text(
-                    text = "You're most consistent with Maghrib prayer. Try applying the same routine to your Fajr prayer for better results!",
+                    text = if (completionRate > 0.8f) 
+                        "MashAllah! Your consistency is excellent. Maintaining this pace will help you reach your next milestone soon."
+                    else 
+                        "You're doing well! Try to focus on being more consistent with your prayers to strengthen your spiritual journey.",
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 12.sp,
                     lineHeight = 18.sp
@@ -518,14 +528,4 @@ fun ConsistencyInsights() {
             }
         }
     }
-}
-
-@Composable
-fun getMainStreak() = StreakData(1, "Prayer Streak", "Days in a row", 7, Color(0xFFFF6B6B), nextMilestone = 10)
-fun getOtherStreaks() = listOf<StreakData>()
-
-@Preview(showBackground = true)
-@Composable
-fun AnalyticsPreview() {
-    // Preview with mock data
 }

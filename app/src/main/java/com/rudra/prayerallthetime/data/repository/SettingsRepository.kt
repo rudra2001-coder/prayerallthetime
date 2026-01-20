@@ -33,4 +33,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext context: Contex
     }
 
     fun isPremiumEnabled(): Boolean = prefs.getBoolean("premium_enabled", false)
+
+    fun clearAllData() {
+        prefs.edit().clear().apply()
+    }
 }

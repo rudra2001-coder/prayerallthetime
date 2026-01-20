@@ -37,4 +37,9 @@ object DatabaseModule {
     fun provideDuaDao(database: AppDatabase): DuaDao {
         return database.duaDao()
     }
+
+    @Provides
+    fun provideAyahDao(database: AppDatabase): AyahDao {
+        return database.ayahDao()
+    }
 }

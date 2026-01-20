@@ -87,4 +87,8 @@ class LocalSettings @Inject constructor(
             }
         }
     }
+
+    suspend fun clearAllData() {
+        context.dataStore.edit { it.clear() }
+    }
 }
