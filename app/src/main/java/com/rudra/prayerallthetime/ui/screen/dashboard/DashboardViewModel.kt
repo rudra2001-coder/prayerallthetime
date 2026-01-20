@@ -7,8 +7,12 @@ import com.rudra.prayerallthetime.data.Prayer
 import com.rudra.prayerallthetime.data.local.LocalSettings
 import com.rudra.prayerallthetime.data.local.PrayerDao
 import com.rudra.prayerallthetime.data.local.PrayerRecord
+import com.rudra.prayerallthetime.data.local.HabitEntity
+import com.rudra.prayerallthetime.data.local.DuaEntity
 import com.rudra.prayerallthetime.data.repository.HadithRepository
 import com.rudra.prayerallthetime.data.repository.PrayerRepository
+import com.rudra.prayerallthetime.data.repository.HabitRepository
+import com.rudra.prayerallthetime.data.repository.DuaRepository
 import com.rudra.prayerallthetime.ui.screen.prayer.PrayerData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -26,7 +30,9 @@ class DashboardViewModel @Inject constructor(
     private val locationService: LocationService,
     private val localSettings: LocalSettings,
     private val prayerDao: PrayerDao,
-    private val hadithRepository: HadithRepository
+    private val hadithRepository: HadithRepository,
+    private val habitRepository: HabitRepository,
+    private val duaRepository: DuaRepository
 ) : ViewModel() {
 
     private val defaultLat = 23.8103
@@ -65,6 +71,12 @@ class DashboardViewModel @Inject constructor(
     private val _completedPrayers = MutableStateFlow<Set<String>>(emptySet())
     val completedPrayers: StateFlow<Set<String>> = _completedPrayers.asStateFlow()
 
+    // Habit and Dua state
+    val habits: StateFlow<List<HabitEntity>> = habitRepository.getAllHabits()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    
+    val dailyDua = MutableStateFlow<DuaEntity?>(null)
+
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     private val todayStr = LocalDate.now().format(dateFormatter)
 
@@ -74,6 +86,10 @@ class DashboardViewModel @Inject constructor(
         fetchHadithOfTheDay()
         loadCompletedPrayers()
         startTimeTickers()
+        fetchDailyDua()
+        viewModelScope.launch {
+            habitRepository.resetDailyHabitsIfNecessary()
+        }
     }
 
     private fun startTimeTickers() {
@@ -190,7 +206,18 @@ class DashboardViewModel @Inject constructor(
             hadithRepository.getRandomHadith()?.let {
                 hadithArabic.value = it.hadithArabic ?: ""
                 hadithEnglish.value = it.hadithEnglish ?: ""
-                hadithInfo.value = "${it.book.bookName}, Hadith ${it.hadithNumber}"
+                hadithInfo.value = "${it.bookName}, Hadith ${it.hadithNumber}"
+            }
+        }
+    }
+
+    private fun fetchDailyDua() {
+        viewModelScope.launch {
+            duaRepository.preloadDuasIfEmpty()
+            duaRepository.getAllDuas().first().let { list ->
+                if (list.isNotEmpty()) {
+                    dailyDua.value = list.random()
+                }
             }
         }
     }
@@ -200,6 +227,12 @@ class DashboardViewModel @Inject constructor(
             prayerDao.getRecordsForDate(todayStr).collect { records ->
                 _completedPrayers.value = records.filter { it.isCompleted }.map { it.prayerName }.toSet()
             }
+        }
+    }
+
+    fun incrementHabit(habitId: Int) {
+        viewModelScope.launch {
+            habitRepository.incrementProgress(habitId)
         }
     }
 

@@ -40,16 +40,20 @@ class QuranHadithViewModel @Inject constructor(
     val isHadithBookmarked: StateFlow<Boolean> = _isHadithBookmarked.asStateFlow()
 
     init {
-        fetchHadith()
+        fetchDailyContent()
     }
 
-    private fun fetchHadith() {
+    private fun fetchDailyContent() {
         viewModelScope.launch {
-            val hadith = hadithRepository.getRandomHadith()
-            if (hadith != null) {
-                _hadithArabic.value = hadith.hadithArabic ?: ""
-                _hadithEnglish.value = hadith.hadithEnglish ?: ""
-                _hadithInfo.value = "${hadith.book.bookName}, Hadith ${hadith.hadithNumber}"
+            try {
+                val hadith = hadithRepository.getRandomHadith()
+                if (hadith != null) {
+                    _hadithArabic.value = hadith.hadithArabic ?: ""
+                    _hadithEnglish.value = hadith.hadithEnglish ?: ""
+                    _hadithInfo.value = "${hadith.bookName}, Hadith ${hadith.hadithNumber}"
+                }
+            } catch (e: Exception) {
+                // Fallback to default values
             }
         }
     }

@@ -11,13 +11,21 @@ import androidx.room.RoomDatabase
         TasbeehRecord::class,
         TaraweehRecord::class,
         FamilyMemberRecord::class,
-        PrayerTimeEntity::class
+        PrayerTimeEntity::class,
+        HadithEntity::class,
+        HabitEntity::class,
+        DuaEntity::class,
+        AyahEntity::class
     ],
-    version = 5,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun prayerDao(): PrayerDao
+    abstract fun hadithDao(): HadithDao
+    abstract fun habitDao(): HabitDao
+    abstract fun duaDao(): DuaDao
+    abstract fun ayahDao(): AyahDao
 
     companion object {
         @Volatile

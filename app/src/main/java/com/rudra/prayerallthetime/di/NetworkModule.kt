@@ -2,6 +2,7 @@ package com.rudra.prayerallthetime.di
 
 import com.rudra.prayerallthetime.data.AlQuranApiService
 import com.rudra.prayerallthetime.data.HadithApiService
+import com.rudra.prayerallthetime.data.remote.PlacesApiService
 import com.rudra.prayerallthetime.data.remote.PrayerApiService
 import dagger.Module
 import dagger.Provides
@@ -56,5 +57,21 @@ object NetworkModule {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(AlQuranApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    @Named("OverpassRetrofit")
+    fun provideOverpassRetrofit(): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://overpass-api.de/api/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun providePlacesApiService(@Named("OverpassRetrofit") retrofit: Retrofit): PlacesApiService {
+        return retrofit.create(PlacesApiService::class.java)
     }
 }

@@ -12,7 +12,17 @@ import com.rudra.prayerallthetime.R
 class PrayerRemainderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val prayerName = intent.getStringExtra("PRAYER_NAME") ?: "Prayer"
+        
+        // 1. Show Visual Notification
         showNotification(context, prayerName)
+        
+        // 2. Start Athan Audio Service
+        val athanIntent = Intent(context, AthanService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(athanIntent)
+        } else {
+            context.startService(athanIntent)
+        }
     }
 
     private fun showNotification(context: Context, prayerName: String) {
@@ -31,7 +41,7 @@ class PrayerRemainderReceiver : BroadcastReceiver() {
         }
 
         val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm) // Use a system icon as fallback
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle("Time for $prayerName")
             .setContentText("It is time for $prayerName prayer. Success awaits!")
             .setPriority(NotificationCompat.PRIORITY_HIGH)

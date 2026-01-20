@@ -60,6 +60,10 @@ import com.rudra.prayerallthetime.ui.screen.charity.CharityScreen
 import com.rudra.prayerallthetime.ui.screen.profile.ProfileScreen
 import com.rudra.prayerallthetime.ui.screen.notifications.NotificationScreen
 import com.rudra.prayerallthetime.ui.screen.achievements.AchievementsScreen
+import com.rudra.prayerallthetime.ui.screen.habits.HabitsScreen
+import com.rudra.prayerallthetime.ui.screen.habits.HabitsViewModel
+import com.rudra.prayerallthetime.ui.screen.duas.DuasScreen
+import com.rudra.prayerallthetime.ui.screen.duas.DuasViewModel
 import com.rudra.prayerallthetime.ui.theme.IslamicGold
 
 @Composable
@@ -77,6 +81,8 @@ fun PremiumNavigation() {
     val calendarViewModel: CalendarViewModel = hiltViewModel()
     val tahajjudViewModel: TahajjudViewModel = hiltViewModel()
     val wuduGuideViewModel: WuduGuideViewModel = hiltViewModel()
+    val habitsViewModel: HabitsViewModel = hiltViewModel()
+    val duasViewModel: DuasViewModel = hiltViewModel()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -153,7 +159,7 @@ fun PremiumNavigation() {
             composable(Screen.Ramadan.route) {
                 RamadanScreen(
                     navController = navController,
-                    prayerViewModel = prayerViewModel
+                    viewModel = ramadanViewModel
                 )
             }
 
@@ -223,11 +229,11 @@ fun PremiumNavigation() {
             }
             
             composable(Screen.RamadanTimer.route) { 
-                RamadanScreen(navController = navController, prayerViewModel = prayerViewModel) 
+                RamadanScreen(navController = navController, viewModel = ramadanViewModel) 
             }
             
             composable(Screen.Taraweeh.route) { 
-                RamadanScreen(navController = navController, prayerViewModel = prayerViewModel) 
+                RamadanScreen(navController = navController, viewModel = ramadanViewModel)
             }
             
             composable(Screen.FamilyMember.route) { 
@@ -240,6 +246,18 @@ fun PremiumNavigation() {
 
             composable(Screen.Report.route) {
                 ReportScreen(navController = navController)
+            }
+
+            composable(Screen.Habits.route) {
+                HabitsScreen(navController = navController, viewModel = habitsViewModel)
+            }
+
+            composable(Screen.Duas.route) {
+                DuasScreen(navController = navController, viewModel = duasViewModel)
+            }
+            
+            composable(Screen.NearbyMosques.route) {
+                ExploreScreen(navController = navController)
             }
         }
     }

@@ -54,6 +54,10 @@ fun CompleteDashboardScreen(
     val wuduStatus by dashboardViewModel.wuduStatus.collectAsState()
     val tahajjudTime by dashboardViewModel.tahajjudTimeStr.collectAsState()
 
+    // New Data
+    val habits by dashboardViewModel.habits.collectAsState()
+    val dailyDua by dashboardViewModel.dailyDua.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -132,6 +136,16 @@ fun CompleteDashboardScreen(
                 )
             }
 
+            // Goal of the Day
+            item {
+                GoalOfTheDayCard(
+                    habit = habits.firstOrNull(),
+                    onActionClick = { habitId ->
+                        dashboardViewModel.incrementHabit(habitId)
+                    }
+                )
+            }
+
             // 2: WeeklyStreakTracker
             item {
                 WeeklyStreakTracker(
@@ -141,31 +155,12 @@ fun CompleteDashboardScreen(
                 )
             }
 
-            // 3: PremiumStreaksCard (Interactive)
+            // Dua of the Day
             item {
-                PremiumStreaksCard(
-                    currentStreakData = StreakData(
-                        id = 1,
-                        name = "Daily Prayer Streak",
-                        description = "Consecutive days of completing all 5 prayers",
-                        days = currentStreak,
-                        color = Color(0xFFFF6B6B),
-                        icon = Icons.Default.Fireplace,
-                        nextMilestone = 30
-                    ),
-                    completedPrayers = completedPrayers,
-                    onTogglePrayer = { prayerName ->
-                        dashboardViewModel.togglePrayerByName(prayerName)
-                    },
-                    onAddDay = {
-                        dashboardViewModel.addTodayToStreak()
-                    },
-                    onViewAll = { navController.navigate(Screen.Streaks.route) },
-                    onStreakClick = { streak ->
-                        navController.navigate(Screen.StreakDetails.route + "/${streak.id}")
-                    }
-                )
+                DuaOfTheDaySection(dua = dailyDua)
             }
+
+
 
             // 4: Worship Tools Panel
             item {
