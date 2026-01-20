@@ -1,4 +1,3 @@
-
 package com.rudra.prayerallthetime.ui.screen.qibla
 
 import android.content.Context
@@ -67,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.rudra.prayerallthetime.ui.screen.prayer.PrayerViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.cos
@@ -83,11 +83,7 @@ fun QiblaScreen(navController: NavController, prayerViewModel: PrayerViewModel) 
     var currentAzimuth by remember { mutableStateOf(0f) }
     var sensorAccuracy by remember { mutableStateOf(0) }
     var isLoading by remember { mutableStateOf(true) }
-    var locationAvailable by remember { mutableStateOf(false) }
-
-    // Smooth rotation animation for compass
-    val animatedAzimuth = remember { Animatable(0f) }
-    val animatedQibla = remember { Animatable(0f) }
+    val locationAvailable = qiblaDirection != 0f
 
     // Calculate the difference between current direction and Qibla
     val angleToQibla = remember(qiblaDirection, currentAzimuth) {
@@ -108,7 +104,15 @@ fun QiblaScreen(navController: NavController, prayerViewModel: PrayerViewModel) 
         label = "qibla_needle"
     )
 
-    // Sensor Logic with improved accuracy
+    // Manage loading state
+    LaunchedEffect(qiblaDirection) {
+        if (qiblaDirection != 0f) {
+            delay(1000) // Give sensors a moment to settle
+            isLoading = false
+        }
+    }
+
+    // Sensor Logic
     DisposableEffect(Unit) {
         val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val rotationVectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
@@ -130,7 +134,6 @@ fun QiblaScreen(navController: NavController, prayerViewModel: PrayerViewModel) 
                         SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
                         SensorManager.getOrientation(rotationMatrix, orientation)
                         val azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
-                        // Smooth the azimuth reading
                         currentAzimuth = (currentAzimuth * 0.7f + azimuth * 0.3f)
                     }
                     Sensor.TYPE_ACCELEROMETER -> {
@@ -143,8 +146,9 @@ fun QiblaScreen(navController: NavController, prayerViewModel: PrayerViewModel) 
                     }
                 }
 
-                // Fallback to accelerometer + magnetometer if rotation vector is unavailable
-                if (hasAccelerometer && hasMagnetometer) {
+                if (!hasAccelerometer || !hasMagnetometer) return
+                
+                if (rotationVectorSensor == null) {
                     SensorManager.getRotationMatrix(rotationMatrix, null, accelerometerReading, magnetometerReading)
                     SensorManager.getOrientation(rotationMatrix, orientation)
                     val azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
@@ -157,21 +161,9 @@ fun QiblaScreen(navController: NavController, prayerViewModel: PrayerViewModel) 
             }
         }
 
-        val sensors = listOfNotNull(
-            rotationVectorSensor,
-            accelerometerSensor,
-            magnetometerSensor
-        )
-
-        sensors.forEach { sensor ->
-            sensorManager.registerListener(
-                sensorEventListener,
-                sensor,
-                SensorManager.SENSOR_DELAY_GAME
-            )
+        listOfNotNull(rotationVectorSensor, accelerometerSensor, magnetometerSensor).forEach { sensor ->
+            sensorManager.registerListener(sensorEventListener, sensor, SensorManager.SENSOR_DELAY_UI)
         }
-
-
 
         onDispose {
             sensorManager.unregisterListener(sensorEventListener)
@@ -181,29 +173,14 @@ fun QiblaScreen(navController: NavController, prayerViewModel: PrayerViewModel) 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = "Qibla Compass",
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
+                title = { Text("Qibla Compass", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Recalibrating compass...")
-                                // In a real app, trigger recalibration logic here
-                            }
-                        }
-                    ) {
+                    IconButton(onClick = { scope.launch { snackbarHostState.showSnackbar("Recalibrating...") } }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Recalibrate")
                     }
                 }
@@ -215,23 +192,13 @@ fun QiblaScreen(navController: NavController, prayerViewModel: PrayerViewModel) 
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface,
-                            MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    )
-                ),
+                .background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surfaceVariant))),
             contentAlignment = Alignment.Center
         ) {
             if (isLoading) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     CircularProgressIndicator()
-                    Text("Calibrating compass...")
+                    Text("Calibrating sensors...")
                 }
             } else {
                 Column(
@@ -239,237 +206,97 @@ fun QiblaScreen(navController: NavController, prayerViewModel: PrayerViewModel) 
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    // Sensor Accuracy Indicator
+                    // Accuracy Indicator
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer
-                        )
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
-                                Text(
-                                    text = "Compass Accuracy",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Text("Compass Accuracy", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(
                                     text = when (sensorAccuracy) {
                                         SensorManager.SENSOR_STATUS_ACCURACY_HIGH -> "High"
                                         SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM -> "Medium"
-                                        SensorManager.SENSOR_STATUS_ACCURACY_LOW -> "Low"
-                                        else -> "Unreliable"
+                                        else -> "Low/Calibrating"
                                     },
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = when (sensorAccuracy) {
-                                        SensorManager.SENSOR_STATUS_ACCURACY_HIGH -> Color.Green
-                                        SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM -> Color.Yellow
-                                        SensorManager.SENSOR_STATUS_ACCURACY_LOW -> Color.Black
-                                        else -> Color.Red
-                                    }
+                                    color = if (sensorAccuracy >= 2) Color(0xFF4CAF50) else Color(0xFFF44336)
                                 )
                             }
                             Icon(
                                 Icons.Default.LocationOn,
-                                contentDescription = "Location",
-                                tint = if (locationAvailable) Color.Green else Color.Gray
+                                contentDescription = null,
+                                tint = if (locationAvailable) Color(0xFF4CAF50) else Color.Gray
                             )
                         }
                     }
 
-                    // Compass Container
+                    // Compass UI
                     Box(
-                        modifier = Modifier
-                            .size(320.dp)
-                            .shadow(16.dp, CircleShape)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                        modifier = Modifier.size(320.dp).shadow(16.dp, CircleShape).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh),
                         contentAlignment = Alignment.Center
                     ) {
-                        // Outer Compass Ring
                         Canvas(modifier = Modifier.fillMaxSize()) {
-                            // Draw gradient background
-                            drawCircle(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-
-                                        Color(0xFF8B4513),
-                                        Color(0xFFD4AF37)
-                                    )
-                                )
-                            )
-
-                            // Draw compass markings
+                            drawCircle(brush = Brush.radialGradient(listOf(Color(0xFF8B4513), Color(0xFFD4AF37))))
                             for (angle in 0..359 step 10) {
-                                val isMajorMarking = angle % 30 == 0
-                                val lineLength = if (isMajorMarking) 20f else 10f
-                                val textSize = if (isMajorMarking) 16.sp else 0.sp
-
+                                val isMajor = angle % 30 == 0
+                                val lineLength = if (isMajor) 20f else 10f
                                 val radian = Math.toRadians(angle.toDouble())
                                 val startX = (size.width / 2) + (size.width / 2 - 40) * cos(radian).toFloat()
                                 val startY = (size.height / 2) + (size.height / 2 - 40) * sin(radian).toFloat()
                                 val endX = (size.width / 2) + (size.width / 2 - 40 - lineLength) * cos(radian).toFloat()
                                 val endY = (size.height / 2) + (size.height / 2 - 40 - lineLength) * sin(radian).toFloat()
-
                                 drawLine(
-                                    color = if (isMajorMarking)  Color(0xFF206224)
-                                    else  Color(0xFFD4AF37),
+                                    color = if (isMajor) Color(0xFF206224) else Color(0xFFD4AF37),
                                     start = Offset(startX, startY),
                                     end = Offset(endX, endY),
-                                    strokeWidth = if (isMajorMarking) 2.dp.toPx() else 1.dp.toPx(),
-                                    cap = StrokeCap.Round
+                                    strokeWidth = if (isMajor) 2.dp.toPx() else 1.dp.toPx()
                                 )
                             }
                         }
 
-                        // Rotating Compass Disk
-                        Box(
-                            modifier = Modifier
-                                .size(260.dp)
-                                .rotate(smoothAzimuth)
-                                .clip(CircleShape)
-                                .background(Color.Transparent),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            // Draw cardinal directions
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                drawCircle(
-                                    Color(0xFF4CAF50),
-                                    style = Stroke(width = 2.dp.toPx())
-                                )
-                            }
-
-                            // Cardinal Directions with enhanced styling
+                        Box(modifier = Modifier.size(260.dp).rotate(smoothAzimuth), contentAlignment = Alignment.Center) {
                             listOf(
                                 Triple("N", Alignment.TopCenter, MaterialTheme.colorScheme.primary),
-                                Triple("S", Alignment.BottomCenter, MaterialTheme.colorScheme.error),
-                                Triple("E", Alignment.CenterEnd, MaterialTheme.colorScheme.tertiary),
+                                Triple("S", Alignment.BottomCenter, Color(0xFFD32F2F)),
+                                Triple("E", Alignment.CenterEnd, Color(0xFFD4AF37)),
                                 Triple("W", Alignment.CenterStart, MaterialTheme.colorScheme.secondary)
                             ).forEach { (text, alignment, color) ->
-                                Box(
-                                    modifier = Modifier
-                                        .align(alignment)
-                                        .padding(20.dp)
-                                ) {
-                                    Text(
-                                        text = text,
-                                        color = color,
-                                        fontSize = 24.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier
-                                            .background(
-                                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                                shape = CircleShape
-                                            )
-                                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                                    )
-                                }
+                                Text(
+                                    text = text,
+                                    color = color,
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.align(alignment).padding(20.dp)
+                                )
                             }
                         }
 
-                        // Qibla Needle (Red arrow pointing to Kaaba)
-                        Canvas(
-                            modifier = Modifier
-                                .size(280.dp)
-                                .rotate(smoothQiblaAngle)
-                        ) {
+                        // Needle
+                        Canvas(modifier = Modifier.size(280.dp).rotate(smoothQiblaAngle)) {
                             val centerX = size.width / 2
                             val centerY = size.height / 2
-
-                            // Draw needle
-                            drawLine(
-                                color = Color(0xFFD32F2F),
-                                start = Offset(centerX, centerY),
-                                end = Offset(centerX, centerY - 100f),
-                                strokeWidth = 8.dp.toPx(),
-                                cap = StrokeCap.Round
-                            )
-
-                            // Draw needle triangle
-                            drawCircle(
-                                color = Color(0xFFD32F2F),
-                                center = Offset(centerX, centerY),
-                                radius = 12.dp.toPx()
-                            )
-
-                            // Draw Kaaba icon at tip
-                            drawCircle(
-                                color = Color(0xFF5D4037),
-                                center = Offset(centerX, centerY - 100f),
-                                radius = 16.dp.toPx()
-                            )
-                        }
-
-                        // Center Dot
-                        Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
-                        )
-                    }
-
-                    // Information Cards
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = buildAnnotatedString {
-                                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
-                                        append("Kaaba Direction: ")
-                                    }
-                                    append("${qiblaDirection.toInt()}°")
-                                },
-                                fontSize = 18.sp
-                            )
-
-                            Text(
-                                text = buildAnnotatedString {
-                                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
-                                        append("Current Heading: ")
-                                    }
-                                    append("${currentAzimuth.toInt()}°")
-                                },
-                                fontSize = 18.sp
-                            )
-
-                            Text(
-                                text = buildAnnotatedString {
-                                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
-                                        append("Turn: ")
-                                    }
-                                    val turnDirection = if (angleToQibla < 180) "Right" else "Left"
-                                    val turnAmount = if (angleToQibla < 180) angleToQibla else 360 - angleToQibla
-                                    append("$turnDirection ${turnAmount.toInt()}°")
-                                },
-                                fontSize = 18.sp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            drawLine(color = Color(0xFFD32F2F), start = Offset(centerX, centerY), end = Offset(centerX, centerY - 110f), strokeWidth = 8.dp.toPx(), cap = StrokeCap.Round)
+                            drawCircle(color = Color(0xFFD32F2F), center = Offset(centerX, centerY), radius = 10.dp.toPx())
+                            drawCircle(color = Color(0xFF212121), center = Offset(centerX, centerY - 110f), radius = 15.dp.toPx()) // Kaaba Symbol
                         }
                     }
 
-                    // Instructions
-                    Text(
-                        text = "Hold your device flat and rotate slowly to find Qibla direction",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        textAlign = TextAlign.Center
-                    )
+                    // Stats
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(buildAnnotatedString { withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("Qibla: ") }; append("${qiblaDirection.toInt()}°") })
+                            Text(buildAnnotatedString { withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("Heading: ") }; append("${currentAzimuth.toInt()}°") })
+                        }
+                    }
+
+                    Text("Hold your device flat for the most accurate reading", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                 }
             }
         }

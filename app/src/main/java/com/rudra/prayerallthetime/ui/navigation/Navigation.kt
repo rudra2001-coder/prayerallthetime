@@ -56,6 +56,10 @@ import com.rudra.prayerallthetime.ui.screen.worship.WorshipScreen
 import com.rudra.prayerallthetime.ui.screen.worship.WorshipViewModel
 import com.rudra.prayerallthetime.ui.screen.wuduguide.WuduGuideScreen
 import com.rudra.prayerallthetime.ui.screen.wuduguide.WuduGuideViewModel
+import com.rudra.prayerallthetime.ui.screen.charity.CharityScreen
+import com.rudra.prayerallthetime.ui.screen.profile.ProfileScreen
+import com.rudra.prayerallthetime.ui.screen.notifications.NotificationScreen
+import com.rudra.prayerallthetime.ui.screen.achievements.AchievementsScreen
 import com.rudra.prayerallthetime.ui.theme.IslamicGold
 
 @Composable
@@ -190,16 +194,45 @@ fun PremiumNavigation() {
                 )
             }
             
-            composable(Screen.Charity.route) { Text("Charity Tracker Coming Soon") }
-            composable(Screen.Profile.route) { Text("Profile Coming Soon") }
-            composable(Screen.Notifications.route) { Text("Notifications Coming Soon") }
-            composable(Screen.Achievements.route) { Text("Achievements Coming Soon") }
-            composable(Screen.Streaks.route) { Text("Streaks Coming Soon") }
-            composable(Screen.Charts.route) { Text("Charts Coming Soon") }
-            composable(Screen.StreakDetails.route) { Text("Streak Details Coming Soon") }
-            composable(Screen.RamadanTimer.route) { Text("Ramadan Timer Coming Soon") }
-            composable(Screen.Taraweeh.route) { Text("Taraweeh Tracker Coming Soon") }
-            composable(Screen.FamilyMember.route) { Text("Family Member Details Coming Soon") }
+            composable(Screen.Charity.route) { 
+                CharityScreen(navController = navController) 
+            }
+            
+            composable(Screen.Profile.route) { 
+                ProfileScreen(navController = navController, prayerViewModel = prayerViewModel) 
+            }
+            
+            composable(Screen.Notifications.route) { 
+                NotificationScreen(navController = navController) 
+            }
+            
+            composable(Screen.Achievements.route) { 
+                AchievementsScreen(navController = navController, prayerViewModel = prayerViewModel) 
+            }
+            
+            composable(Screen.Streaks.route) { 
+                AnalyticsScreen(navController = navController, prayerViewModel = prayerViewModel) 
+            }
+            
+            composable(Screen.Charts.route) { 
+                AnalyticsScreen(navController = navController, prayerViewModel = prayerViewModel) 
+            }
+            
+            composable(Screen.StreakDetails.route) { 
+                AnalyticsScreen(navController = navController, prayerViewModel = prayerViewModel) 
+            }
+            
+            composable(Screen.RamadanTimer.route) { 
+                RamadanScreen(navController = navController, prayerViewModel = prayerViewModel) 
+            }
+            
+            composable(Screen.Taraweeh.route) { 
+                RamadanScreen(navController = navController, prayerViewModel = prayerViewModel) 
+            }
+            
+            composable(Screen.FamilyMember.route) { 
+                FamilyScreen(navController = navController, prayerViewModel = prayerViewModel) 
+            }
             
             composable(Screen.Hadith.route) {
                 com.rudra.prayerallthetime.ui.screen.hadith.HadithScreen(navController = navController)

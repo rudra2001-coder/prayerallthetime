@@ -21,6 +21,14 @@ class LocalSettings @Inject constructor(
     private val WUDU_STATUS = booleanPreferencesKey("wudu_status")
     private val TAHAJJUD_TIME = stringPreferencesKey("tahajjud_time")
     private val CURRENT_SURAH = stringPreferencesKey("current_surah")
+    
+    // New settings for manual vs auto prayer times
+    private val USE_MANUAL_PRAYER_TIMES = booleanPreferencesKey("use_manual_prayer_times")
+    private val MANUAL_FAJR = stringPreferencesKey("manual_fajr")
+    private val MANUAL_DHUHR = stringPreferencesKey("manual_dhuhr")
+    private val MANUAL_ASR = stringPreferencesKey("manual_asr")
+    private val MANUAL_MAGHRIB = stringPreferencesKey("manual_maghrib")
+    private val MANUAL_ISHA = stringPreferencesKey("manual_isha")
 
     val userLocation: Flow<Pair<Double, Double>?> = context.dataStore.data.map { preferences ->
         val lat = preferences[LATITUDE]?.toDouble()
@@ -35,6 +43,14 @@ class LocalSettings @Inject constructor(
     val tahajjudTime: Flow<String> = context.dataStore.data.map { it[TAHAJJUD_TIME] ?: "03:45 AM" }
     
     val currentSurah: Flow<String> = context.dataStore.data.map { it[CURRENT_SURAH] ?: "Al-Fatihah" }
+
+    val useManualPrayerTimes: Flow<Boolean> = context.dataStore.data.map { it[USE_MANUAL_PRAYER_TIMES] ?: false }
+    
+    val manualFajr: Flow<String> = context.dataStore.data.map { it[MANUAL_FAJR] ?: "05:00 AM" }
+    val manualDhuhr: Flow<String> = context.dataStore.data.map { it[MANUAL_DHUHR] ?: "12:30 PM" }
+    val manualAsr: Flow<String> = context.dataStore.data.map { it[MANUAL_ASR] ?: "04:30 PM" }
+    val manualMaghrib: Flow<String> = context.dataStore.data.map { it[MANUAL_MAGHRIB] ?: "06:15 PM" }
+    val manualIsha: Flow<String> = context.dataStore.data.map { it[MANUAL_ISHA] ?: "08:00 PM" }
 
     suspend fun saveLocation(lat: Double, lon: Double, city: String) {
         context.dataStore.edit { preferences ->
@@ -54,5 +70,21 @@ class LocalSettings @Inject constructor(
 
     suspend fun updateCurrentSurah(surah: String) {
         context.dataStore.edit { it[CURRENT_SURAH] = surah }
+    }
+
+    suspend fun setUseManualPrayerTimes(use: Boolean) {
+        context.dataStore.edit { it[USE_MANUAL_PRAYER_TIMES] = use }
+    }
+
+    suspend fun updateManualPrayerTime(prayerName: String, time: String) {
+        context.dataStore.edit { preferences ->
+            when (prayerName.lowercase()) {
+                "fajr" -> preferences[MANUAL_FAJR] = time
+                "dhuhr" -> preferences[MANUAL_DHUHR] = time
+                "asr" -> preferences[MANUAL_ASR] = time
+                "maghrib" -> preferences[MANUAL_MAGHRIB] = time
+                "isha" -> preferences[MANUAL_ISHA] = time
+            }
+        }
     }
 }

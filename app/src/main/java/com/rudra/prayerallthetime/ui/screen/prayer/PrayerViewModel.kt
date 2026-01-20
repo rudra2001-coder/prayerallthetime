@@ -48,6 +48,14 @@ class PrayerViewModel @Inject constructor(
     val currentSurah = localSettings.currentSurah.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Al-Fatihah")
     val tahajjudTimeStr = localSettings.tahajjudTime.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "03:45 AM")
 
+    // Manual vs Auto Settings
+    val useManualPrayerTimes = localSettings.useManualPrayerTimes.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val manualFajr = localSettings.manualFajr.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "05:00 AM")
+    val manualDhuhr = localSettings.manualDhuhr.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "12:30 PM")
+    val manualAsr = localSettings.manualAsr.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "04:30 PM")
+    val manualMaghrib = localSettings.manualMaghrib.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "06:15 PM")
+    val manualIsha = localSettings.manualIsha.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "08:00 PM")
+
     // Dashboard specific states
     val nextPrayerName = MutableStateFlow("Fajr")
     val countdown = MutableStateFlow("00:00:00")
@@ -96,8 +104,20 @@ class PrayerViewModel @Inject constructor(
         loadLocalTasbeeh()
         loadLocalTaraweeh()
         startCountdownTicker()
+        observeManualSettingsChange()
     }
     
+    private fun observeManualSettingsChange() {
+        viewModelScope.launch {
+            merge(
+                useManualPrayerTimes, manualFajr, manualDhuhr, 
+                manualAsr, manualMaghrib, manualIsha
+            ).collectLatest {
+                refreshData()
+            }
+        }
+    }
+
     private fun startCountdownTicker() {
         viewModelScope.launch {
             while (true) {
@@ -108,6 +128,10 @@ class PrayerViewModel @Inject constructor(
                         val minutes = (diff / (1000 * 60)) % 60
                         val seconds = (diff / 1000) % 60
                         countdown.value = String.format("%02d:%02d:%02d", hours, minutes, seconds)
+                    } else if (diff <= 0 && diff > -2000) {
+                        playAthan()
+                        refreshData()
+                        delay(2000)
                     } else if (diff < -5000) {
                         refreshData()
                     }
@@ -115,6 +139,10 @@ class PrayerViewModel @Inject constructor(
                 delay(1000)
             }
         }
+    }
+
+    private fun playAthan() {
+        playAudio("Athan Time for ${nextPrayerName.value}")
     }
 
     private fun loadInitialData() {
@@ -158,7 +186,6 @@ class PrayerViewModel @Inject constructor(
                 gregorianDate.value = data.gregorianDate
                 _qiblaDirection.value = data.qiblaDirection.replace("°", "").toFloatOrNull() ?: 0f
                 
-                // Update Ramadan related times if available
                 suhoorTime.value = data.allPrayers.find { it.name.equals("Fajr", true) }?.time ?: "--:--"
                 iftarTime.value = data.allPrayers.find { it.name.equals("Maghrib", true) }?.time ?: "--:--"
                 
@@ -178,6 +205,11 @@ class PrayerViewModel @Inject constructor(
             Prayer(detail.name, detail.time, isPrayed)
         }
         _prayers.value = prayerList
+        
+        val dailyPrayers = prayerList.filter { it.name != "Sunrise" }
+        if (dailyPrayers.isNotEmpty()) {
+            completionRate.value = dailyPrayers.count { it.isPrayed }.toFloat() / dailyPrayers.size
+        }
     }
 
     fun refreshLocation() {
@@ -190,7 +222,21 @@ class PrayerViewModel @Inject constructor(
                 _cityName.value = city
                 fetchPrayerTimes(location.latitude, location.longitude)
             } catch (e: Exception) {
-                prayerState.value = PrayerState.Error("Location access failed: ${e.message}")
+                val defaultLat = 23.8103
+                val defaultLon = 90.4125
+                _cityName.value = "Default Location"
+                fetchPrayerTimes(defaultLat, defaultLon)
+            }
+        }
+    }
+
+    private suspend fun syncManualWithAuto() {
+        val location = localSettings.userLocation.first() ?: (23.8103 to 90.4125)
+        val autoData = prayerRepository.getPrayerTimes(location.first, location.second, LocalDate.now())
+        
+        autoData.allPrayers.forEach { prayer ->
+            if (prayer.name != "Sunrise" && prayer.name != "Sunset") {
+                localSettings.updateManualPrayerTime(prayer.name, prayer.time)
             }
         }
     }
@@ -210,6 +256,7 @@ class PrayerViewModel @Inject constructor(
                 } else {
                     prayerDao.insertRecord(PrayerRecord(date = todayStr, prayerName = prayer.name, isCompleted = newStatus))
                 }
+                refreshData()
             }
         }
     }
@@ -223,6 +270,21 @@ class PrayerViewModel @Inject constructor(
     fun updateCurrentSurah(surah: String) {
         viewModelScope.launch {
             localSettings.updateCurrentSurah(surah)
+        }
+    }
+
+    fun setManualMode(enabled: Boolean) {
+        viewModelScope.launch {
+            if (enabled) syncManualWithAuto()
+            localSettings.setUseManualPrayerTimes(enabled)
+            refreshData()
+        }
+    }
+
+    fun updateManualTime(prayerName: String, time: String) {
+        viewModelScope.launch {
+            localSettings.updateManualPrayerTime(prayerName, time)
+            refreshData()
         }
     }
 
@@ -276,6 +338,13 @@ class PrayerViewModel @Inject constructor(
     fun toggleAyatBookmark() { isAyatBookmarked.value = !isAyatBookmarked.value }
     fun toggleHadithBookmark() { isHadithBookmarked.value = !isHadithBookmarked.value }
     fun shareContent(content: String) {}
-    fun playAudio(text: String) {}
-    fun refreshData() { loadInitialData() }
+    fun playAudio(text: String) {
+        println("Playing audio: $text")
+    }
+    fun refreshData() { 
+        viewModelScope.launch {
+            val location = localSettings.userLocation.first() ?: (23.8103 to 90.4125)
+            fetchPrayerTimes(location.first, location.second)
+        }
+    }
 }

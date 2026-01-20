@@ -5,12 +5,14 @@ import com.rudra.prayerallthetime.core.calendar.HijriCalendar
 import com.rudra.prayerallthetime.core.config.CalculationMethod
 import com.rudra.prayerallthetime.core.config.Madhab
 import com.rudra.prayerallthetime.core.prayer.PrayerTimesCalculator
+import com.rudra.prayerallthetime.data.local.LocalSettings
 import com.rudra.prayerallthetime.data.local.PrayerDao
 import com.rudra.prayerallthetime.data.local.PrayerTimeEntity
 import com.rudra.prayerallthetime.ui.screen.prayer.PrayerData
 import com.rudra.prayerallthetime.ui.screen.prayer.PrayerDetails
 import com.rudra.prayerallthetime.util.NetworkUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
@@ -23,6 +25,7 @@ import javax.inject.Singleton
 class PrayerRepository @Inject constructor(
     private val prayerDao: PrayerDao,
     private val networkUtils: NetworkUtils,
+    private val localSettings: LocalSettings,
     @ApplicationContext private val context: Context
 ) {
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -31,27 +34,47 @@ class PrayerRepository @Inject constructor(
     suspend fun getPrayerTimes(latitude: Double, longitude: Double, date: LocalDate): PrayerData {
         val dateStr = date.format(dateFormatter)
         
-        // 1. Try Local DB Cache
-        val cachedEntity = prayerDao.getPrayerTimesByDate(dateStr)
+        val useManual = localSettings.useManualPrayerTimes.first()
         
-        // 2. Decide whether to fetch from Remote or Offline Calculation
-        val entity = if (networkUtils.isOnline()) {
-            fetchRemoteAndCache(latitude, longitude, date)
+        val entity = if (useManual) {
+            PrayerTimeEntity(
+                date = dateStr,
+                fajr = localSettings.manualFajr.first(),
+                sunrise = "--:--", // Manual doesn't strictly track sunrise unless we want to
+                dhuhr = localSettings.manualDhuhr.first(),
+                asr = localSettings.manualAsr.first(),
+                maghrib = localSettings.manualMaghrib.first(),
+                isha = localSettings.manualIsha.first(),
+                hijriDate = HijriCalendar.getHijriDate(date),
+                city = "Manual Mode",
+                latitude = latitude,
+                longitude = longitude,
+                isFromApi = false
+            )
         } else {
-            cachedEntity ?: calculateWithCoreLogic(latitude, longitude, date)
+            // 1. Try Local DB Cache
+            val cachedEntity = prayerDao.getPrayerTimesByDate(dateStr)
+            
+            // 2. Decide whether to fetch from Remote or Offline Calculation
+            if (networkUtils.isOnline()) {
+                fetchRemoteAndCache(latitude, longitude, date)
+            } else {
+                cachedEntity ?: calculateWithCoreLogic(latitude, longitude, date)
+            }
         }
 
         // Using Internal Hijri Logic
         val hijriDateStr = HijriCalendar.getHijriDate(date)
 
-        val allPrayers = listOf(
-            PrayerDetails("Fajr", "الفجر", entity.fajr),
-            PrayerDetails("Sunrise", "الشروق", entity.sunrise),
-            PrayerDetails("Dhuhr", "الظهر", entity.dhuhr),
-            PrayerDetails("Asr", "العصر", entity.asr),
-            PrayerDetails("Maghrib", "المغرب", entity.maghrib),
-            PrayerDetails("Isha", "العشاء", entity.isha)
-        )
+        val allPrayers = mutableListOf<PrayerDetails>()
+        allPrayers.add(PrayerDetails("Fajr", "الفجر", entity.fajr))
+        if (!useManual) {
+            allPrayers.add(PrayerDetails("Sunrise", "الشروق", entity.sunrise))
+        }
+        allPrayers.add(PrayerDetails("Dhuhr", "الظهر", entity.dhuhr))
+        allPrayers.add(PrayerDetails("Asr", "العصر", entity.asr))
+        allPrayers.add(PrayerDetails("Maghrib", "المغرب", entity.maghrib))
+        allPrayers.add(PrayerDetails("Isha", "العشاء", entity.isha))
 
         val now = Calendar.getInstance()
         val nextPrayer = findNextPrayer(allPrayers, now)
@@ -101,13 +124,17 @@ class PrayerRepository @Inject constructor(
 
     private fun findNextPrayer(prayers: List<PrayerDetails>, now: Calendar): PrayerDetails {
         val currentTime = timeFormat.format(now.time)
-        for (prayer in prayers) {
-            if (prayer.name == "Sunrise") continue
+        // Sort prayers by time to find the next one correctly
+        val sortedPrayers = prayers.filter { it.name != "Sunrise" }.sortedBy { 
+            parseTimeToMillis(it.time, LocalDate.now()) 
+        }
+
+        for (prayer in sortedPrayers) {
             if (isTimeAfter(prayer.time, currentTime)) {
                 return prayer
             }
         }
-        return prayers[0] // Fajr
+        return sortedPrayers[0] // Return Fajr (next day)
     }
 
     private fun isTimeAfter(time1: String, time2: String): Boolean {
@@ -126,7 +153,9 @@ class PrayerRepository @Inject constructor(
             val cal = Calendar.getInstance()
             cal.time = time
             val result = Calendar.getInstance()
-            result.set(date.year, date.monthValue - 1, date.dayOfMonth, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+            result.set(date.year, date.monthValue - 1, date.dayOfMonth, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), 0)
+            result.set(Calendar.SECOND, 0)
+            result.set(Calendar.MILLISECOND, 0)
             result.timeInMillis
         } catch (e: Exception) {
             0L
@@ -135,14 +164,13 @@ class PrayerRepository @Inject constructor(
 
     private fun calculateCountdown(targetTimeStr: String): String {
         val now = System.currentTimeMillis()
-        val target = parseTimeToMillis(targetTimeStr, LocalDate.now())
-        var diff = target - now
+        var target = parseTimeToMillis(targetTimeStr, LocalDate.now())
         
-        if (diff <= 0) {
-            val tomorrowTarget = parseTimeToMillis(targetTimeStr, LocalDate.now().plusDays(1))
-            diff = tomorrowTarget - now
+        if (target <= now) {
+            target = parseTimeToMillis(targetTimeStr, LocalDate.now().plusDays(1))
         }
         
+        val diff = target - now
         if (diff <= 0) return "00:00:00"
         
         val hours = diff / (1000 * 60 * 60)
@@ -152,9 +180,12 @@ class PrayerRepository @Inject constructor(
     }
 
     private fun calculateProgress(prayers: List<PrayerDetails>, now: Calendar): Float {
+        val prayersOnly = prayers.filter { it.name != "Sunrise" }
+        if (prayersOnly.isEmpty()) return 0f
+        
         val currentMillis = now.timeInMillis
-        val dayStart = parseTimeToMillis(prayers[0].time, LocalDate.now())
-        val dayEnd = parseTimeToMillis(prayers.last().time, LocalDate.now())
+        val dayStart = parseTimeToMillis(prayersOnly.first().time, LocalDate.now())
+        val dayEnd = parseTimeToMillis(prayersOnly.last().time, LocalDate.now())
         
         if (currentMillis < dayStart) return 0f
         if (currentMillis > dayEnd) return 1f
