@@ -10,9 +10,10 @@ import androidx.room.RoomDatabase
         PrayerRecord::class,
         TasbeehRecord::class,
         TaraweehRecord::class,
-        FamilyMemberRecord::class
+        FamilyMemberRecord::class,
+        PrayerTimeEntity::class
     ],
-    version = 3,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -5,9 +5,12 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PrayerDao {
-    // Prayer Records
+    // Prayer Records (History/Completion)
     @Query("SELECT * FROM prayer_records WHERE date = :date")
     fun getRecordsForDate(date: String): Flow<List<PrayerRecord>>
+
+    @Query("SELECT * FROM prayer_records WHERE date BETWEEN :startDate AND :endDate")
+    fun getRecordsInRange(startDate: String, endDate: String): Flow<List<PrayerRecord>>
 
     @Query("SELECT * FROM prayer_records WHERE date = :date AND prayerName = :prayerName LIMIT 1")
     suspend fun getRecord(date: String, prayerName: String): PrayerRecord?
@@ -20,6 +23,16 @@ interface PrayerDao {
 
     @Query("SELECT COUNT(*) FROM prayer_records WHERE isCompleted = 1")
     fun getTotalCompletedCount(): Flow<Int>
+
+    // Prayer Times Cache
+    @Query("SELECT * FROM prayer_times WHERE date = :date LIMIT 1")
+    suspend fun getPrayerTimesByDate(date: String): PrayerTimeEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPrayerTimes(prayerTime: PrayerTimeEntity)
+
+    @Query("DELETE FROM prayer_times WHERE date < :date")
+    suspend fun deleteOldPrayerTimes(date: String)
 
     // Tasbeeh Records
     @Query("SELECT * FROM tasbeeh_records WHERE date = :date LIMIT 1")

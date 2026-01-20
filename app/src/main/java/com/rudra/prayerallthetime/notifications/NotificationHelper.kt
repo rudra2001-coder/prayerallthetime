@@ -6,11 +6,13 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import com.batoulapps.adhan.CalculationMethod
-import com.batoulapps.adhan.Coordinates
-import com.batoulapps.adhan.PrayerTimes
-import com.batoulapps.adhan.data.DateComponents
-import java.util.Date
+import com.rudra.prayerallthetime.core.config.CalculationMethod
+import com.rudra.prayerallthetime.core.config.Madhab
+import com.rudra.prayerallthetime.core.prayer.PrayerTimesCalculator
+import java.time.LocalDate
+import java.util.Calendar
+import java.util.Locale
+import java.util.TimeZone
 
 class NotificationHelper(private val context: Context) {
 
@@ -20,50 +22,72 @@ class NotificationHelper(private val context: Context) {
     fun schedulePrayerNotifications(latitude: Double = 23.6556256, longitude: Double = 90.6257555) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (!alarmManager.canScheduleExactAlarms()) {
-                // Requesting permission is handled in MainActivity
+                // Permission handled in Activity
             }
         }
 
-        val coordinates = Coordinates(latitude, longitude)
-        val dateComponents = DateComponents.from(Date())
-        val params = CalculationMethod.MUSLIM_WORLD_LEAGUE.parameters
-        val prayerTimes = PrayerTimes(coordinates, dateComponents, params)
+        val calculator = PrayerTimesCalculator(CalculationMethod.BANGLADESH, Madhab.SHAFI)
+        val tz = TimeZone.getDefault().rawOffset / (1000.0 * 60 * 60)
+        val today = LocalDate.now()
+        val times = calculator.calculatePrayerTimes(today, latitude, longitude, tz)
 
         val prayers = listOf(
-            "Fajr" to prayerTimes.fajr,
-            "Dhuhr" to prayerTimes.dhuhr,
-            "Asr" to prayerTimes.asr,
-            "Maghrib" to prayerTimes.maghrib,
-            "Isha" to prayerTimes.isha
+            "Fajr" to times.fajr,
+            "Dhuhr" to times.dhuhr,
+            "Asr" to times.asr,
+            "Maghrib" to times.maghrib,
+            "Isha" to times.isha
         )
 
         val now = System.currentTimeMillis()
+        val timeFormat = java.text.SimpleDateFormat("hh:mm a", Locale.getDefault())
 
-        prayers.forEach { (name, time) ->
-            if (time.time > now) {
-                val intent = Intent(context, PrayerRemainderReceiver::class.java).apply {
-                    putExtra("PRAYER_NAME", name)
-                }
-                val pendingIntent = PendingIntent.getBroadcast(
-                    context,
-                    name.hashCode(),
-                    intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
+        prayers.forEach { (name, timeStr) ->
+            try {
+                val date = timeFormat.parse(timeStr)
+                if (date != null) {
+                    val prayerCal = Calendar.getInstance()
+                    val timeCal = Calendar.getInstance()
+                    timeCal.time = date
+                    
+                    prayerCal.set(Calendar.HOUR_OF_DAY, timeCal.get(Calendar.HOUR_OF_DAY))
+                    prayerCal.set(Calendar.MINUTE, timeCal.get(Calendar.MINUTE))
+                    prayerCal.set(Calendar.SECOND, 0)
+                    
+                    var prayerTimeMillis = prayerCal.timeInMillis
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        time.time,
-                        pendingIntent
+                    // If time already passed today, schedule for tomorrow
+                    if (prayerTimeMillis <= now) {
+                        prayerCal.add(Calendar.DAY_OF_YEAR, 1)
+                        prayerTimeMillis = prayerCal.timeInMillis
+                    }
+
+                    val intent = Intent(context, PrayerRemainderReceiver::class.java).apply {
+                        putExtra("PRAYER_NAME", name)
+                    }
+                    val pendingIntent = PendingIntent.getBroadcast(
+                        context,
+                        name.hashCode(),
+                        intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
-                } else {
-                    alarmManager.setExact(
-                        AlarmManager.RTC_WAKEUP,
-                        time.time,
-                        pendingIntent
-                    )
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        alarmManager.setExactAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            prayerTimeMillis,
+                            pendingIntent
+                        )
+                    } else {
+                        alarmManager.setExact(
+                            AlarmManager.RTC_WAKEUP,
+                            prayerTimeMillis,
+                            pendingIntent
+                        )
+                    }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

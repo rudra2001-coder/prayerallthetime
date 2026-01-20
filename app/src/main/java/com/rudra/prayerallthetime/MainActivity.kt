@@ -10,9 +10,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.rudra.prayerallthetime.notifications.NotificationHelper
-import com.rudra.prayerallthetime.ui.navigation.Navigation
+import com.rudra.prayerallthetime.ui.navigation.PremiumNavigation
 import com.rudra.prayerallthetime.ui.theme.PrayerAllTheTimeTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -32,7 +34,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             PrayerAllTheTimeTheme {
-                Navigation()
+                PremiumNavigation()
             }
         }
     }
