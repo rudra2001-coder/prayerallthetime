@@ -8,15 +8,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,6 +37,7 @@ fun CompleteDashboardScreen(
 ) {
     val prayers by dashboardViewModel.prayers.collectAsState()
     val nextPrayerName by dashboardViewModel.nextPrayerName.collectAsState()
+    val nextPrayerArabicName by dashboardViewModel.nextPrayerArabicName.collectAsState()
     val countdown by dashboardViewModel.countdown.collectAsState()
     val nextPrayerMillis by dashboardViewModel.nextPrayerMillis.collectAsState()
     val sunriseTime by dashboardViewModel.sunriseTime.collectAsState()
@@ -95,6 +95,9 @@ fun CompleteDashboardScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0F1B4C)), 
                 actions = {
+                    IconButton(onClick = { navController.navigate(Screen.Ramadan.route) }) {
+                        Icon(Icons.Default.Mosque, contentDescription = "Ramadan", tint = IslamicGold)
+                    }
                     IconButton(onClick = { navController.navigate(Screen.Notifications.route) }) {
                         BadgedBox(
                             badge = { Badge(containerColor = Color(0xFFFF6B6B)) { Text("3") } }
@@ -111,13 +114,14 @@ fun CompleteDashboardScreen(
                 .padding(paddingValues)
                 .fillMaxSize()
                 .background(Color(0xFFF8F9FA)),
-            contentPadding = PaddingValues(vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // 1st: HeroCard
             item {
                 PremiumHeroCard(
                     nextPrayerName = nextPrayerName,
+                    nextPrayerArabicName = nextPrayerArabicName,
                     countdown = countdown,
                     nextPrayerMillis = nextPrayerMillis,
                     sunriseTime = sunriseTime,
@@ -132,19 +136,13 @@ fun CompleteDashboardScreen(
                     onAlarmClick = { dashboardViewModel.toggleAlarm() },
                     onCalendarClick = { navController.navigate(Screen.Calendar.route) },
                     onLocationClick = { navController.navigate(Screen.Qibla.route) },
-                    onPrayerInfoClick = { /* Handle prayer info click */ },
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    onPrayerInfoClick = { /* Handle prayer info click */ }
                 )
             }
 
-            // Goal of the Day
+            // Quick Access Section (New)
             item {
-                GoalOfTheDayCard(
-                    habit = habits.firstOrNull(),
-                    onActionClick = { habitId ->
-                        dashboardViewModel.incrementHabit(habitId)
-                    }
-                )
+                QuickAccessSection(navController)
             }
 
             // 2: WeeklyStreakTracker
@@ -156,12 +154,7 @@ fun CompleteDashboardScreen(
                 )
             }
 
-            // Dua of the Day
-            item {
-                DuaOfTheDaySection(dua = dailyDua)
-            }
-
-            // 4: Worship Tools Panel
+            // Worship Tools Panel
             item {
                 PremiumWorshipToolsPanel(
                     tasbeehCount = tasbeehCount,
@@ -177,7 +170,7 @@ fun CompleteDashboardScreen(
                 )
             }
 
-            // 5: PrayerClocksSection
+            // Prayer Clocks
             item {
                 PrayerClocksSection(
                     prayers = prayers,
@@ -188,50 +181,159 @@ fun CompleteDashboardScreen(
                 )
             }
 
-            // 6: PrayerTimeline
+            // Daily Motivation
             item {
-                Card(
-                    modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
-                ) {
-                    PrayerTimeline(prayers = prayers)
-                }
+                DailyMotivationSection(
+                    hadithArabic = dashboardViewModel.hadithArabic.collectAsState().value,
+                    hadithEnglish = dashboardViewModel.hadithEnglish.collectAsState().value,
+                    hadithInfo = dashboardViewModel.hadithInfo.collectAsState().value
+                )
             }
 
-            // 7: EnhancedProgressCard
+            // Dua of the Day
+            item {
+                DuaOfTheDaySection(dua = dailyDua)
+            }
+
+            // Progress Card
             item {
                 EnhancedProgressCard(
                     completionPercentage = completionRate,
                     completed = prayers.count { it.isPrayed },
                     total = prayers.size,
                     onAnalyticsClick = { navController.navigate(Screen.Analytics.route) },
-                    modifier = Modifier.padding(horizontal = 0.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
 
-            // 8: QuickInsights
+            // Goal of the Day
+            item {
+                GoalOfTheDayCard(
+                    habit = habits.firstOrNull(),
+                    onActionClick = { habitId ->
+                        dashboardViewModel.incrementHabit(habitId)
+                    }
+                )
+            }
+
+            // Quick Insights
             item {
                 QuickInsights(
                     insights = listOf(
                         InsightData(
-                            title = "Performance Insight",
-                            description = if (completionRate > 0.8f) "MashAllah! Your consistency is excellent today." else "Try to complete all prayers to maintain your streak.",
-                            icon = Icons.Default.TipsAndUpdates,
-                            backgroundColor = Color(0xFFE3F2FD),
-                            tintColor = Color(0xFF1976D2)
+                            title = "Performance",
+                            description = if (completionRate > 0.8f) "Excellent consistency today!" else "Keep going to maintain your streak.",
+                            icon = Icons.Default.TrendingUp,
+                            backgroundColor = Color(0xFFE8F5E9),
+                            tintColor = Color(0xFF4CAF50)
                         ),
                         InsightData(
-                            title = "Daily Tip",
-                            description = "Use the Tasbeeh counter after prayers for extra rewards.",
-                            icon = Icons.Default.Lightbulb,
+                            title = "Ramadan",
+                            description = "Don't forget to check your Ramadan tracker.",
+                            icon = Icons.Default.Mosque,
                             backgroundColor = Color(0xFFFFF3E0),
-                            tintColor = Color(0xFFF57C00)
+                            tintColor = IslamicGold
                         )
                     )
                 )
             }
+        }
+    }
+}
 
+@Composable
+fun QuickAccessSection(navController: NavController) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        QuickAccessItem(
+            icon = Icons.Default.MenuBook,
+            label = "Quran",
+            color = Color(0xFF8B4513),
+            modifier = Modifier.weight(1f),
+            onClick = { navController.navigate(Screen.QuranHadith.route) }
+        )
+        QuickAccessItem(
+            icon = Icons.Default.AutoAwesome,
+            label = "Dua",
+            color = Color(0xFF4ECDC4),
+            modifier = Modifier.weight(1f),
+            onClick = { navController.navigate(Screen.Duas.route) }
+        )
+        QuickAccessItem(
+            icon = Icons.Default.Mosque,
+            label = "Ramadan",
+            color = IslamicGold,
+            modifier = Modifier.weight(1f),
+            onClick = { navController.navigate(Screen.Ramadan.route) }
+        )
+    }
+}
+
+@Composable
+fun QuickAccessItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        color = Color.White,
+        shadowElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun DailyMotivationSection(
+    hadithArabic: String,
+    hadithEnglish: String,
+    hadithInfo: String
+) {
+    Card(
+        modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Default.FormatQuote, contentDescription = null, tint = IslamicGold, modifier = Modifier.size(32.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = hadithArabic,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = Color(0xFF2C3E50)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = hadithEnglish,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "— $hadithInfo",
+                style = MaterialTheme.typography.labelSmall,
+                color = IslamicGold,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
