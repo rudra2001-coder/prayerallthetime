@@ -1,7 +1,9 @@
 package com.rudra.prayerallthetime.ui.screen.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -9,11 +11,15 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.rudra.prayerallthetime.ui.navigation.Screen
+import com.rudra.prayerallthetime.ui.theme.IslamicGold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,7 +37,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text("Settings", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
@@ -39,108 +45,105 @@ fun SettingsScreen(
                             contentDescription = "Back"
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
-        }
+        },
+        containerColor = Color(0xFFF8F9FA)
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .padding(paddingValues)
+                .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = "General",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(16.dp)
-            )
+            SettingsCategoryHeader("General")
 
-            ListItem(
-                headlineContent = { Text("Notifications") },
-                supportingContent = { Text("Enable prayer reminders") },
-                leadingContent = { Icon(Icons.Default.Notifications, contentDescription = null) },
-                trailingContent = {
+            SettingsItem(
+                title = "Notifications",
+                subtitle = "Enable prayer reminders",
+                icon = Icons.Default.Notifications,
+                trailing = {
                     Switch(
                         checked = notificationsEnabled,
-                        onCheckedChange = { settingsViewModel.toggleNotifications(it) }
+                        onCheckedChange = { settingsViewModel.toggleNotifications(it) },
+                        colors = SwitchDefaults.colors(checkedThumbColor = IslamicGold, checkedTrackColor = IslamicGold.copy(alpha = 0.5f))
                     )
                 }
             )
 
-            ListItem(
-                headlineContent = { Text("Dark Mode") },
-                supportingContent = { Text("Use Midnight Blue theme") },
-                leadingContent = { Icon(Icons.Default.DarkMode, contentDescription = null) },
-                trailingContent = {
+            SettingsItem(
+                title = "Dark Mode",
+                subtitle = "Use Midnight Blue theme",
+                icon = Icons.Default.DarkMode,
+                trailing = {
                     Switch(
                         checked = darkModeEnabled,
-                        onCheckedChange = { settingsViewModel.toggleDarkMode(it) }
+                        onCheckedChange = { settingsViewModel.toggleDarkMode(it) },
+                        colors = SwitchDefaults.colors(checkedThumbColor = IslamicGold, checkedTrackColor = IslamicGold.copy(alpha = 0.5f))
                     )
                 }
             )
 
-            HorizontalDivider()
+            SettingsCategoryHeader("Data & Location")
 
-            Text(
-                text = "Location",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(16.dp)
-            )
-
-            ListItem(
-                headlineContent = { Text("Automatic Location") },
-                supportingContent = { Text("Update prayer times based on GPS") },
-                leadingContent = { Icon(Icons.Default.LocationOn, contentDescription = null) },
-                trailingContent = {
+            SettingsItem(
+                title = "Automatic Location",
+                subtitle = "Update prayer times based on GPS",
+                icon = Icons.Default.LocationOn,
+                trailing = {
                     Switch(
                         checked = locationEnabled,
-                        onCheckedChange = { settingsViewModel.toggleLocation(it) }
+                        onCheckedChange = { settingsViewModel.toggleLocation(it) },
+                        colors = SwitchDefaults.colors(checkedThumbColor = IslamicGold, checkedTrackColor = IslamicGold.copy(alpha = 0.5f))
                     )
                 }
             )
 
-            HorizontalDivider()
-
-            Text(
-                text = "Premium & App",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(16.dp)
+            SettingsItem(
+                title = "Refresh Prayer Times",
+                subtitle = "Force-sync with the server",
+                icon = Icons.Default.Sync,
+                onClick = {
+                    navController.previousBackStackEntry?.savedStateHandle?.set("refresh_prayer_times", true)
+                    navController.navigateUp()
+                }
             )
 
-            ListItem(
-                headlineContent = { Text("Premium Version") },
-                supportingContent = { Text("Unlock all features") },
-                leadingContent = { Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.secondary) },
-                trailingContent = {
+            SettingsCategoryHeader("Premium & App")
+
+            SettingsItem(
+                title = "Premium Version",
+                subtitle = "Unlock all features",
+                icon = Icons.Default.Star,
+                iconColor = IslamicGold,
+                trailing = {
                     Switch(
                         checked = premiumEnabled,
-                        onCheckedChange = { settingsViewModel.togglePremium(it) }
+                        onCheckedChange = { settingsViewModel.togglePremium(it) },
+                        colors = SwitchDefaults.colors(checkedThumbColor = IslamicGold, checkedTrackColor = IslamicGold.copy(alpha = 0.5f))
                     )
                 }
             )
 
-            HorizontalDivider()
-
-            Text(
-                text = "Danger Zone",
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.Red,
-                modifier = Modifier.padding(16.dp)
+            SettingsItem(
+                title = "About App",
+                subtitle = "Version 1.0.0",
+                icon = Icons.Default.Info,
+                onClick = { /* Navigate to About */ }
             )
 
-            ListItem(
-                headlineContent = { Text("Reset Full App", color = Color.Red) },
-                supportingContent = { Text("Clear all prayer records, streaks, and settings") },
-                leadingContent = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = Color.Red) },
-                modifier = Modifier.padding(bottom = 24.dp),
-                trailingContent = {
-                    TextButton(onClick = { showResetDialog = true }) {
-                        Text("Reset", color = Color.Red)
-                    }
-                }
+            SettingsCategoryHeader("Danger Zone", Color.Red)
+
+            SettingsItem(
+                title = "Reset Full App",
+                subtitle = "Clear all prayer records, streaks, and settings",
+                icon = Icons.Default.DeleteForever,
+                iconColor = Color.Red,
+                onClick = { showResetDialog = true }
             )
+
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 
@@ -169,6 +172,55 @@ fun SettingsScreen(
                     Text("Cancel")
                 }
             }
+        )
+    }
+}
+
+@Composable
+fun SettingsCategoryHeader(title: String, color: Color = Color(0xFF0F1B4C)) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        color = color,
+        modifier = Modifier.padding(start = 24.dp, top = 24.dp, bottom = 8.dp)
+    )
+}
+
+@Composable
+fun SettingsItem(
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconColor: Color = Color(0xFF0F1B4C),
+    trailing: @Composable (() -> Unit)? = null,
+    onClick: (() -> Unit)? = null
+) {
+    Surface(
+        onClick = onClick ?: {},
+        enabled = onClick != null,
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(16.dp)),
+        color = Color.White,
+        tonalElevation = 0.dp
+    ) {
+        ListItem(
+            headlineContent = { Text(title, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50)) },
+            supportingContent = { Text(subtitle, color = Color.Gray, fontSize = 12.sp) },
+            leadingContent = { 
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(iconColor.copy(alpha = 0.1f)),
+                    contentAlignment = androidx.compose.ui.Alignment.Center
+                ) {
+                    Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp))
+                }
+            },
+            trailingContent = trailing,
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
         )
     }
 }

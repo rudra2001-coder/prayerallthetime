@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.rudra.prayerallthetime.data.local.AppDatabase
 import com.rudra.prayerallthetime.data.local.LocalSettings
 import com.rudra.prayerallthetime.data.repository.SettingsRepository
+import com.rudra.prayerallthetime.ui.screen.prayer.PrayerViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,16 +53,9 @@ class SettingsViewModel @Inject constructor(
 
     fun resetFullApp(onComplete: () -> Unit) {
         viewModelScope.launch {
-            // 1. Clear DataStore
             localSettings.clearAllData()
-            
-            // 2. Clear SharedPreferences
             repository.clearAllData()
-            
-            // 3. Clear Room Database
             database.clearAllTables()
-            
-            // 4. Notify UI
             onComplete()
         }
     }
