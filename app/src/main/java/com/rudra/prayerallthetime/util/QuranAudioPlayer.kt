@@ -2,7 +2,10 @@ package com.rudra.prayerallthetime.util
 
 import android.content.Context
 import androidx.annotation.OptIn
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -27,16 +30,29 @@ class QuranAudioPlayer @Inject constructor(
 
     private fun initializePlayer() {
         if (exoPlayer == null) {
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_SPEECH)
+                .build()
+
             exoPlayer = ExoPlayer.Builder(context).build().apply {
+                setAudioAttributes(audioAttributes, true)
+                repeatMode = Player.REPEAT_MODE_OFF
+                
                 addListener(object : Player.Listener {
                     override fun onIsPlayingChanged(playing: Boolean) {
                         _isPlaying.value = playing
                     }
 
                     override fun onPlaybackStateChanged(state: Int) {
-                        if (state == Player.STATE_ENDED) {
-                            _isPlaying.value = false
+                        when (state) {
+                            Player.STATE_ENDED, Player.STATE_IDLE -> _isPlaying.value = false
                         }
+                    }
+
+                    override fun onPlayerError(error: PlaybackException) {
+                        _isPlaying.value = false
+                        // Optionally expose error state via StateFlow in the future
                     }
                 })
             }
@@ -45,6 +61,11 @@ class QuranAudioPlayer @Inject constructor(
 
     fun playAyah(url: String, ayahNumber: Int) {
         initializePlayer()
+
+        if (_currentAyahNumber.value == ayahNumber && exoPlayer?.isPlaying == true) {
+            return
+        }
+
         _currentAyahNumber.value = ayahNumber
         exoPlayer?.apply {
             setMediaItem(MediaItem.fromUri(url))
@@ -59,8 +80,13 @@ class QuranAudioPlayer @Inject constructor(
         }
     }
 
+    fun pause() {
+        exoPlayer?.pause()
+    }
+
     fun stop() {
         exoPlayer?.stop()
+        exoPlayer?.clearMediaItems()
         _isPlaying.value = false
         _currentAyahNumber.value = null
     }
