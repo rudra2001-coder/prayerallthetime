@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,15 +43,15 @@ fun SurahListScreen(
 
     Scaffold(
         topBar = {
-            Column(modifier = Modifier.background(Color.White)) {
+            Column(modifier = Modifier.background(Color(0xFF0F1B4C))) {
                 TopAppBar(
-                    title = { Text("Holy Quran", fontWeight = FontWeight.Bold) },
+                    title = { Text("Holy Quran", fontWeight = FontWeight.Bold, color = Color.White) },
                     navigationIcon = {
                         IconButton(onClick = { navController.navigateUp() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0F1B4C))
                 )
                 OutlinedTextField(
                     value = searchQuery,
@@ -58,15 +59,21 @@ fun SurahListScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Search Surah...") },
+                    placeholder = { Text("Search Surah...", color = Color.White.copy(alpha = 0.6f)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = IslamicGold) },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
                         focusedBorderColor = IslamicGold,
-                        unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                        cursorColor = IslamicGold,
+                        focusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.1f)
                     )
                 )
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     ) { paddingValues ->
@@ -76,7 +83,7 @@ fun SurahListScreen(
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(filteredList) { surah ->
                         SurahListItem(surah) {
@@ -94,42 +101,44 @@ fun SurahListItem(surah: SurahSummary, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(20.dp), spotColor = Color.Gray.copy(alpha = 0.2f))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .background(IslamicGold.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = surah.number.toString(),
-                    color = IslamicGold,
-                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2C3E50),
+                    fontWeight = FontWeight.Black,
                     fontSize = 14.sp
                 )
             }
             
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(20.dp))
             
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = surah.englishName,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF2C3E50)
                 )
                 Text(
                     text = "${surah.revelationType} • ${surah.numberOfAyahs} Ayahs",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
                 )
             }
             
@@ -137,7 +146,8 @@ fun SurahListItem(surah: SurahSummary, onClick: () -> Unit) {
                 text = surah.name,
                 style = MaterialTheme.typography.titleLarge,
                 color = IslamicGold,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp
             )
         }
     }

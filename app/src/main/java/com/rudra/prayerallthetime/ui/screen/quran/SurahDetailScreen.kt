@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -44,16 +45,17 @@ fun SurahDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { 
                     Text(
                         text = ayahs.firstOrNull()?.surahName ?: "Surah Details",
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
                     ) 
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 actions = {
@@ -61,7 +63,7 @@ fun SurahDetailScreen(
                         Icon(Icons.Default.Download, contentDescription = "Download Surah", tint = IslamicGold)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFF0F1B4C))
             )
         }
     ) { paddingValues ->
@@ -71,7 +73,7 @@ fun SurahDetailScreen(
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
                     items(ayahs) { ayah ->
                         AyahItem(
@@ -80,6 +82,7 @@ fun SurahDetailScreen(
                             onPlayPauseClick = { viewModel.playAyah(ayah) }
                         )
                     }
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
             }
         }
@@ -93,57 +96,61 @@ fun AyahItem(
     onPlayPauseClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(24.dp), spotColor = Color.Gray.copy(alpha = 0.2f)),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(24.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    color = IslamicGold.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(8.dp)
+                    color = Color(0xFFF8F9FA),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
                 ) {
                     Text(
-                        text = "${ayah.surah}:${ayah.ayah}",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        text = "Ayah ${ayah.ayah}",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = IslamicGold
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF2C3E50)
                     )
                 }
 
                 IconButton(
                     onClick = onPlayPauseClick,
-                    modifier = Modifier.size(32.dp).background(IslamicGold.copy(alpha = 0.1f), CircleShape)
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(if (isPlaying) Color(0xFF0F1B4C) else IslamicGold.copy(alpha = 0.1f), CircleShape)
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = if (isPlaying) "Pause" else "Play",
-                        tint = IslamicGold,
-                        modifier = Modifier.size(20.dp)
+                        tint = if (isPlaying) Color.White else IslamicGold,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Text(
                 text = ayah.text,
-                style = MaterialTheme.typography.headlineSmall.copy(
+                style = MaterialTheme.typography.headlineMedium.copy(
                     textAlign = TextAlign.Right,
-                    lineHeight = 44.sp,
+                    lineHeight = 48.sp,
                     fontWeight = FontWeight.Bold
                 ),
                 modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFF2C3E50)
+                color = Color(0xFF0F1B4C)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
 
@@ -152,8 +159,9 @@ fun AyahItem(
             Text(
                 text = ayah.translationBn ?: "",
                 style = MaterialTheme.typography.bodyLarge.copy(
-                    lineHeight = 26.sp,
-                    color = Color.DarkGray
+                    lineHeight = 28.sp,
+                    color = Color(0xFF2C3E50),
+                    fontWeight = FontWeight.Medium
                 ),
                 modifier = Modifier.fillMaxWidth()
             )

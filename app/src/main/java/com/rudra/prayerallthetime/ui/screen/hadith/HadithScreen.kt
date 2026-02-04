@@ -7,12 +7,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -21,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.rudra.prayerallthetime.data.local.HadithEntity
+import com.rudra.prayerallthetime.ui.theme.IslamicGold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,14 +33,14 @@ fun HadithScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Prophetic Traditions", fontWeight = FontWeight.Bold) },
+            CenterAlignedTopAppBar(
+                title = { Text("Prophetic Traditions", fontWeight = FontWeight.ExtraBold, color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFF0F1B4C))
             )
         }
     ) { paddingValues ->
@@ -52,7 +52,7 @@ fun HadithScreen(
         ) {
             LazyColumn(
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 items(hadiths) { hadith ->
                     HadithListItem(hadith)
@@ -61,21 +61,23 @@ fun HadithScreen(
                 if (isLoading) {
                     item {
                         Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = Color(0xFF206224))
+                            CircularProgressIndicator(color = IslamicGold)
                         }
                     }
                 } else {
                     item {
                         Button(
                             onClick = { viewModel.loadMore() },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F8E9)),
-                            shape = RoundedCornerShape(12.dp)
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F1B4C)),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = ButtonDefaults.buttonElevation(4.dp)
                         ) {
-                            Text("Load More Hadiths", color = Color(0xFF206224), fontWeight = FontWeight.Bold)
+                            Text("Load More Hadiths", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                     }
                 }
+                item { Spacer(modifier = Modifier.height(24.dp)) }
             }
         }
     }
@@ -84,12 +86,13 @@ fun HadithScreen(
 @Composable
 fun HadithListItem(hadith: HadithEntity) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(6.dp, RoundedCornerShape(24.dp), spotColor = Color.Gray.copy(alpha = 0.2f)),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(24.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -97,59 +100,68 @@ fun HadithListItem(hadith: HadithEntity) {
             ) {
                 Text(
                     text = hadith.bookName.uppercase(),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF206224)
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    color = IslamicGold,
+                    letterSpacing = 1.sp
                 )
                 Surface(
-                    color = Color(0xFFE8F5E9),
-                    shape = RoundedCornerShape(8.dp)
+                    color = Color(0xFFF8F9FA),
+                    shape = RoundedCornerShape(8.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
                 ) {
                     Text(
                         text = hadith.status ?: "Sahih",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        fontSize = 10.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2E7D32)
+                        color = Color(0xFF2C3E50)
                     )
                 }
             }
             
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             
             if (!hadith.hadithArabic.isNullOrBlank()) {
                 Text(
                     text = hadith.hadithArabic,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF206224),
-                    lineHeight = 34.sp,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F1B4C),
+                    lineHeight = 38.sp,
                     textAlign = TextAlign.Right,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
             }
             
             Text(
                 text = hadith.hadithEnglish ?: "",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 22.sp
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 24.sp,
+                color = Color(0xFF2C3E50)
             )
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
             
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
                 text = "Narrated by: ${hadith.englishNarrator ?: "Unknown"}",
-                fontSize = 12.sp,
+                fontSize = 13.sp,
                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                color = Color.Gray
+                color = Color.Gray,
+                fontWeight = FontWeight.Medium
             )
             
             Text(
                 text = "Hadith No: ${hadith.hadithNumber}",
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 color = Color.LightGray,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
