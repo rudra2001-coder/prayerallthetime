@@ -8,5 +8,8 @@ data class FamilyMemberRecord(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val name: String,
-    val completedPrayers: Int
+    val relationship: String, // e.g., "Father", "Mother", "Sibling", "Spouse", "Child"
+    val completedPrayersToday: Int = 0,
+    val totalCompletedPrayers: Int = 0,
+    val lastActiveDate: String = "" // YYYY-MM-DD
 )

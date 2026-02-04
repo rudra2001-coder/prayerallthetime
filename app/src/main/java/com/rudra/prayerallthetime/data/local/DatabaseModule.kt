@@ -42,4 +42,9 @@ object DatabaseModule {
     fun provideAyahDao(database: AppDatabase): AyahDao {
         return database.ayahDao()
     }
+
+    @Provides
+    fun provideCharityDao(database: AppDatabase): CharityDao {
+        return database.charityDao()
+    }
 }

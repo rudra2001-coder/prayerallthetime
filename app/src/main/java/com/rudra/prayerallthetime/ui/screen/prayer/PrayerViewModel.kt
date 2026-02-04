@@ -76,8 +76,8 @@ class PrayerViewModel @Inject constructor(
     val weeklyDayData = MutableStateFlow<List<DayData>>(emptyList())
     
     val fastingCountdown = MutableStateFlow("00:00:00")
-    val suhoorTime = MutableStateFlow("--:--")
     val iftarTime = MutableStateFlow("--:--")
+    val suhoorTime = MutableStateFlow("--:--")
     val ramadanDay = MutableStateFlow(0)
 
     val ayatArabic = MutableStateFlow("بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ")
@@ -384,9 +384,16 @@ class PrayerViewModel @Inject constructor(
         }
     }
 
-    fun addFamilyMember(name: String) {
+    fun addFamilyMember(name: String, relationship: String) {
         viewModelScope.launch {
-            prayerDao.insertFamilyMember(FamilyMemberRecord(name = name, completedPrayers = 0))
+            val today = LocalDate.now().format(dateFormatter)
+            prayerDao.insertFamilyMember(
+                FamilyMemberRecord(
+                    name = name,
+                    relationship = relationship,
+                    lastActiveDate = today
+                )
+            )
         }
     }
 

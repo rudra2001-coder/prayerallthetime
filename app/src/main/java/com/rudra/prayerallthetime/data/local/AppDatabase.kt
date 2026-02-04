@@ -15,9 +15,10 @@ import androidx.room.RoomDatabase
         HadithEntity::class,
         HabitEntity::class,
         DuaEntity::class,
-        AyahEntity::class
+        AyahEntity::class,
+        CharityRecord::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -26,6 +27,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun habitDao(): HabitDao
     abstract fun duaDao(): DuaDao
     abstract fun ayahDao(): AyahDao
+    abstract fun charityDao(): CharityDao
 
     companion object {
         @Volatile

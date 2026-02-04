@@ -74,7 +74,9 @@ fun QuranHadithScreen(
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             item {
-                ReadingProgressCard()
+                ReadingProgressCard {
+                    navController.navigate(Screen.SurahList.route)
+                }
             }
 
             item {
@@ -115,11 +117,12 @@ fun QuranHadithScreen(
 }
 
 @Composable
-fun ReadingProgressCard() {
+fun ReadingProgressCard(onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(20.dp),
+            .padding(20.dp)
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF2C3E50))
     ) {
@@ -128,21 +131,20 @@ fun ReadingProgressCard() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Last Read", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-                Text("Surah Al-Baqarah", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Continue Reading", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+                Text("Holy Quran", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Ayat No: 255", color = IslamicGold, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text("114 Surahs with Bangla Translation", color = IslamicGold, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             }
             
-            Box(contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(
-                    progress = 0.45f,
-                    modifier = Modifier.size(64.dp),
-                    color = IslamicGold,
-                    trackColor = Color.White.copy(alpha = 0.1f),
-                    strokeWidth = 6.dp
-                )
-                Text("45%", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(IslamicGold),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.MenuBook, null, tint = Color.White)
             }
         }
     }
@@ -252,7 +254,7 @@ fun ContentActionButton(icon: ImageVector, onClick: () -> Unit, tint: Color = Co
 @Composable
 fun LibraryCategories(navController: NavController, onFeatureComingSoon: (String) -> Unit) {
     val items = listOf(
-        LibraryItem("Surah List", Icons.Default.FormatListBulleted, Color(0xFF4ECDC4), ""),
+        LibraryItem("Surah List", Icons.Default.FormatListBulleted, Color(0xFF4ECDC4), Screen.SurahList.route),
         LibraryItem("Juz List", Icons.Default.GridView, Color(0xFF45B7D1), ""),
         LibraryItem("Hadith Books", Icons.Default.MenuBook, IslamicGold, Screen.Hadith.route),
         LibraryItem("Bookmarks", Icons.Default.Bookmarks, Color(0xFFFF6B6B), "")
@@ -268,7 +270,7 @@ fun LibraryCategories(navController: NavController, onFeatureComingSoon: (String
         )
         
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            LibraryCard(items[0], Modifier.weight(1f)) { onFeatureComingSoon("Quran Library coming soon") }
+            LibraryCard(items[0], Modifier.weight(1f)) { navController.navigate(items[0].route) }
             LibraryCard(items[1], Modifier.weight(1f)) { onFeatureComingSoon("Juz List coming soon") }
         }
         Spacer(modifier = Modifier.height(16.dp))

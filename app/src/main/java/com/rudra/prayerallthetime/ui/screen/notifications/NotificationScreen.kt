@@ -1,5 +1,6 @@
 package com.rudra.prayerallthetime.ui.screen.notifications
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,157 +9,103 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.NotificationsOff
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.outlined.NotificationsActive
-import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import com.rudra.prayerallthetime.ui.theme.IslamicGold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(navController: NavController) {
-    var hasUnreadNotifications by remember { mutableStateOf(true) }
-
-    val notifications = listOf(
-        NotificationData(
-            title = "Fajr Athan",
-            message = "It's time for Fajr prayer in Gurgaon. Don't miss your morning prayers.",
-            time = "Today, 5:00 AM",
-            isRead = false,
-            type = NotificationType.PRAYER_TIME,
-            iconColor = 0xFF4CAF50
-        ),
-        NotificationData(
-            title = "Daily Quran Verse",
-            message = "Read Surah Al-Kahf today. Friday reminder for spiritual growth.",
-            time = "Today, 9:00 AM",
-            isRead = true,
-            type = NotificationType.REMINDER,
-            iconColor = 0xFF2196F3
-        ),
-        NotificationData(
-            title = "Prayer Times Updated",
-            message = "Prayer times have been updated for your current location in Dhaka.",
-            time = "Yesterday, 3:45 PM",
-            isRead = true,
-            type = NotificationType.UPDATE,
-            iconColor = 0xFF9C27B0
-        ),
-        NotificationData(
-            title = "Dhuhr Prayer",
-            message = "Dhuhr prayer time starting in 15 minutes. Prepare for prayer.",
-            time = "Yesterday, 12:45 PM",
-            isRead = true,
-            type = NotificationType.PRAYER_TIME,
-            iconColor = 0xFF4CAF50
-        ),
-        NotificationData(
-            title = "Tasbih Counter",
-            message = "You've completed 500 tasbih today. Keep up the good work!",
-            time = "Oct 25, 8:30 PM",
-            isRead = true,
-            type = NotificationType.ACHIEVEMENT,
-            iconColor = 0xFFFF9800
-        ),
-        NotificationData(
-            title = "App Update Available",
-            message = "New version 2.1.0 is available with improved features.",
-            time = "Oct 24, 11:00 AM",
-            isRead = true,
-            type = NotificationType.UPDATE,
-            iconColor = 0xFF9C27B0
+    val notifications = remember {
+        listOf(
+            NotificationData(
+                "Fajr Athan",
+                "It's time for Fajr prayer. Start your day with the blessing of Allah.",
+                "Today, 5:00 AM",
+                false,
+                NotificationType.PRAYER_TIME,
+                0xFF4CAF50
+            ),
+            NotificationData(
+                "Daily Dua Reminder",
+                "Today's Special Dua: 'O Allah, I ask You for beneficial knowledge...'",
+                "Today, 9:00 AM",
+                false,
+                NotificationType.REMINDER,
+                0xFFD4AF37
+            ),
+            NotificationData(
+                "Charity Milestone",
+                "MashAllah! You've contributed to 3 Sadaqah acts this month.",
+                "Yesterday, 8:30 PM",
+                true,
+                NotificationType.ACHIEVEMENT,
+                0xFFFF6B6B
+            ),
+            NotificationData(
+                "Prayer Times Sync",
+                "Prayer times have been updated for your current location.",
+                "Yesterday, 3:45 PM",
+                true,
+                NotificationType.UPDATE,
+                0xFF2196F3
+            )
         )
-    )
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            "Notifications",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
-                        )
-                        Text(
-                            "${notifications.count { !it.isRead }} unread",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
+                title = { Text("Notifications", fontWeight = FontWeight.ExtraBold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
-                actions = {
-                    if (hasUnreadNotifications) {
-                        BadgedBox(
-                            badge = {
-                                Badge {
-                                    Text(notifications.count { !it.isRead }.toString())
-                                }
-                            }
-                        ) {
-                            IconButton(onClick = { /* Mark all as read */ }) {
-                                Icon(
-                                    Icons.Outlined.NotificationsActive,
-                                    contentDescription = "Notifications"
-                                )
-                            }
-                        }
-                    } else {
-                        IconButton(onClick = { /* Toggle notifications */ }) {
-                            Icon(
-                                Icons.Outlined.NotificationsNone,
-                                contentDescription = "No notifications"
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface)
+                .padding(paddingValues)
+                .background(Color(0xFFF8F9FA))
         ) {
-            // Stats Section
-            StatsSection(notifications)
+            NotificationStats(notifications)
 
-            // Notifications List
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(notifications) { notification ->
-                    NotificationItem(notification = notification)
+            if (notifications.isEmpty()) {
+                EmptyState()
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        Text(
+                            "Recent Updates",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                        )
+                    }
+                    items(notifications) { notification ->
+                        NotificationItemCard(notification)
+                    }
                 }
             }
         }
@@ -166,69 +113,146 @@ fun NotificationScreen(navController: NavController) {
 }
 
 @Composable
-fun StatsSection(notifications: List<NotificationData>) {
+fun NotificationStats(notifications: List<NotificationData>) {
+    val unreadCount = notifications.count { !it.isRead }
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
-        shape = RoundedCornerShape(16.dp)
+            .padding(16.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1B4C))
     ) {
         Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+            modifier = Modifier.padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            StatItem(
-                count = notifications.count { !it.isRead },
-                label = "Unread",
-                color = MaterialTheme.colorScheme.primary
-            )
-            Divider(
+            Column {
+                Text(
+                    text = if (unreadCount > 0) "You have $unreadCount new" else "You're all caught up",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 12.sp
+                )
+                Text(
+                    text = "Alerts & Reminders",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            Box(
                 modifier = Modifier
-                    .height(40.dp)
-                    .width(1.dp),
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-            )
-            StatItem(
-                count = notifications.count { it.type == NotificationType.PRAYER_TIME },
-                label = "Prayer Times",
-                color = Color(0xFF4CAF50)
-            )
-            Divider(
-                modifier = Modifier
-                    .height(40.dp)
-                    .width(1.dp),
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-            )
-            StatItem(
-                count = notifications.size,
-                label = "Total",
-                color = MaterialTheme.colorScheme.secondary
-            )
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(IslamicGold.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (unreadCount > 0) Icons.Default.NotificationsActive else Icons.Default.NotificationsNone,
+                    contentDescription = null,
+                    tint = IslamicGold,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-fun StatItem(count: Int, label: String, color: Color) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+fun NotificationItemCard(notification: NotificationData) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (notification.isRead) Color.White else Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (notification.isRead) 1.dp else 4.dp)
     ) {
-        Text(
-            text = "$count",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(notification.iconColor).copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = getNotificationIcon(notification.type),
+                    contentDescription = null,
+                    tint = Color(notification.iconColor),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = notification.title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (notification.isRead) FontWeight.Bold else FontWeight.Black,
+                        color = Color(0xFF2C3E50)
+                    )
+                    if (!notification.isRead) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(IslamicGold)
+                        )
+                    }
+                }
+                
+                Text(
+                    text = notification.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 18.sp,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+                
+                Text(
+                    text = notification.time,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.LightGray
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyState() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(Icons.Default.NotificationsOff, null, Modifier.size(64.dp), Color.LightGray)
+        Spacer(Modifier.height(16.dp))
+        Text("All clear!", fontWeight = FontWeight.Bold, color = Color.Gray)
+        Text("No new notifications for now.", color = Color.Gray, fontSize = 14.sp)
+    }
+}
+
+private fun getNotificationIcon(type: NotificationType): ImageVector {
+    return when (type) {
+        NotificationType.PRAYER_TIME -> Icons.Default.Mosque
+        NotificationType.REMINDER -> Icons.Default.MenuBook
+        NotificationType.ACHIEVEMENT -> Icons.Default.EmojiEvents
+        NotificationType.UPDATE -> Icons.Default.Sync
     }
 }
 
@@ -244,153 +268,3 @@ data class NotificationData(
     val type: NotificationType,
     val iconColor: Long
 )
-
-@Composable
-fun NotificationItem(notification: NotificationData) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (notification.isRead) {
-                MaterialTheme.colorScheme.surface
-            } else {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
-            }
-        ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (notification.isRead) 0.dp else 2.dp
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            // Unread indicator
-            if (!notification.isRead) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-            } else {
-                Spacer(modifier = Modifier.width(20.dp))
-            }
-
-            // Icon
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color(notification.iconColor).copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = getIconForType(notification.type),
-                    contentDescription = null,
-                    tint = Color(notification.iconColor),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // Content
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = notification.title,
-                        fontWeight = if (notification.isRead) FontWeight.Medium else FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = if (notification.isRead) {
-                            MaterialTheme.colorScheme.onSurface
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = notification.time,
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = notification.message,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Type badge
-                Text(
-                    text = notification.type.name.replace("_", " "),
-                    fontSize = 10.sp,
-                    color = Color(notification.iconColor),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color(notification.iconColor).copy(alpha = 0.1f))
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun getIconForType(type: NotificationType): ImageVector {
-    return when (type) {
-        NotificationType.PRAYER_TIME -> Icons.Default.Schedule
-        NotificationType.REMINDER -> Icons.Default.Notifications
-        NotificationType.UPDATE -> Icons.Default.Notifications
-        NotificationType.ACHIEVEMENT -> Icons.Default.Notifications
-    }
-}
-
-// Optional: Empty State
-@Composable
-fun EmptyNotificationsState() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.Default.NotificationsOff,
-            contentDescription = "No notifications",
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "No Notifications",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "You're all caught up! Check back later for prayer reminders and updates.",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
-    }
-}

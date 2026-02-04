@@ -11,7 +11,7 @@ interface AyahDao {
     @Query("SELECT * FROM quran_ayats WHERE isBookmarked = 1")
     fun getBookmarkedAyahs(): Flow<List<AyahEntity>>
 
-    @Query("SELECT * FROM quran_ayats WHERE text LIKE '%' || :query || '%' OR translation LIKE '%' || :query || '%'")
+    @Query("SELECT * FROM quran_ayats WHERE text LIKE '%' || :query || '%' OR translation LIKE '%' || :query || '%' OR translationBn LIKE '%' || :query || '%'")
     suspend fun searchQuran(query: String): List<AyahEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -25,4 +25,7 @@ interface AyahDao {
 
     @Query("SELECT COUNT(*) FROM quran_ayats")
     suspend fun getAyahCount(): Int
+
+    @Query("SELECT * FROM quran_ayats WHERE number = :number LIMIT 1")
+    suspend fun getAyahByNumber(number: Int): AyahEntity?
 }

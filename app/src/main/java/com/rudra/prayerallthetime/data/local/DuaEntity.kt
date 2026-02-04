@@ -9,8 +9,12 @@ data class DuaEntity(
     val id: Int = 0,
     val title: String,
     val arabicText: String,
-    val transliteration: String?,
+    val transliteration: String? = null,
     val translation: String,
-    val reference: String?,
-    val category: String // e.g., "Morning/Evening", "Anxiety", "Protection"
+    val translationBn: String? = null,
+    val reference: String? = null,
+    val category: String,
+    val isFavorite: Boolean = false,
+    val isDownloaded: Boolean = false,
+    val dateAdded: Long = System.currentTimeMillis()
 )

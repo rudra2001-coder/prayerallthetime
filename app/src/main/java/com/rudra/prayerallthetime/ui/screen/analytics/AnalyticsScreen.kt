@@ -1,7 +1,6 @@
 package com.rudra.prayerallthetime.ui.screen.analytics
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,7 +10,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,17 +18,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.rudra.prayerallthetime.data.local.HabitEntity
 import com.rudra.prayerallthetime.ui.navigation.Screen
 import com.rudra.prayerallthetime.ui.screen.prayer.Badge
 import com.rudra.prayerallthetime.ui.screen.prayer.DayData
@@ -44,10 +40,10 @@ fun AnalyticsScreen(
     analyticsViewModel: AnalyticsViewModel = hiltViewModel()
 ) {
     val currentStreak by prayerViewModel.currentStreak.collectAsState()
-    val prayers by prayerViewModel.prayers.collectAsState()
-    val prayerStats by prayerViewModel.prayerStats.collectAsState()
-    val weeklyDayData by prayerViewModel.weeklyDayData.collectAsState()
-    val earnedBadges by prayerViewModel.earnedBadges.collectAsState()
+    val prayerConsistency by analyticsViewModel.prayerConsistency.collectAsState()
+    val weeklyProgress by analyticsViewModel.weeklyProgress.collectAsState()
+    val habitStats by analyticsViewModel.habitStats.collectAsState()
+    val totalCompleted by analyticsViewModel.totalCompletedPrayers.collectAsState()
     
     val mainStreak = StreakData(
         id = 1,
@@ -58,49 +54,34 @@ fun AnalyticsScreen(
         icon = Icons.Default.Whatshot,
         nextMilestone = if (currentStreak < 10) 10 else if (currentStreak < 30) 30 else currentStreak + 10
     )
-    val completedPrayers = prayers.filter { it.isPrayed }.map { it.name }.toSet()
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFFBFBFB)),
-        contentPadding = PaddingValues(bottom = 24.dp)
+            .background(Color(0xFFF8F9FA)),
+        contentPadding = PaddingValues(bottom = 32.dp)
     ) {
         item {
-            AnalyticsHeader()
+            AnalyticsHeader(totalCompleted)
         }
 
         item {
             StreakCard(
                 streakData = mainStreak,
-                onStreakClick = { navController.navigate(Screen.Streaks.route) }
+                onStreakClick = { /* Navigate to detailed streaks if needed */ }
             )
         }
 
         item {
-            WeeklyProgressSection(weeklyDayData)
+            WeeklyActivitySection(weeklyProgress)
         }
 
         item {
-            DailyCheckInSection(
-                completedPrayers = completedPrayers,
-                onTogglePrayer = { prayerName ->
-                    prayers.find { it.name == prayerName }?.let {
-                        prayerViewModel.togglePrayerState(it)
-                    }
-                }
-            )
+            ConsistencyBreakdownSection(prayerConsistency)
         }
 
         item {
-            PrayerBreakdownSection(prayerStats)
-        }
-
-        item {
-            BadgesSection(
-                badges = earnedBadges,
-                onViewAll = { navController.navigate(Screen.Achievements.route) }
-            )
+            HabitsPerformanceSection(habitStats)
         }
 
         item {
@@ -110,7 +91,7 @@ fun AnalyticsScreen(
 }
 
 @Composable
-fun AnalyticsHeader() {
+fun AnalyticsHeader(totalCompleted: Int) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -118,13 +99,12 @@ fun AnalyticsHeader() {
     ) {
         Text(
             text = "Spiritual Analytics",
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFF2C3E50)
-            )
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF0F1B4C)
         )
         Text(
-            text = "Track your journey of ibadah",
+            text = "You have performed $totalCompleted prayers so far. MashAllah!",
             style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray
         )
@@ -138,8 +118,8 @@ fun StreakCard(streakData: StreakData, onStreakClick: () -> Unit) {
             .padding(horizontal = 20.dp)
             .fillMaxWidth()
             .clickable { onStreakClick() }
-            .shadow(12.dp, RoundedCornerShape(24.dp), spotColor = Color(0xFFFF6B6B).copy(alpha = 0.5f)),
-        shape = RoundedCornerShape(24.dp),
+            .shadow(12.dp, RoundedCornerShape(32.dp), spotColor = Color(0xFFFF6B6B).copy(alpha = 0.5f)),
+        shape = RoundedCornerShape(32.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Box(
@@ -154,16 +134,16 @@ fun StreakCard(streakData: StreakData, onStreakClick: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Current Streak",
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
+                        text = "CURRENT STREAK",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "${streakData.days} Days",
                         color = Color.White,
-                        fontSize = 36.sp,
+                        fontSize = 38.sp,
                         fontWeight = FontWeight.Black
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -180,195 +160,20 @@ fun StreakCard(streakData: StreakData, onStreakClick: () -> Unit) {
                     Text(
                         text = "Next Milestone: ${streakData.nextMilestone} days",
                         color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
                 
-                Spacer(modifier = Modifier.width(16.dp))
-                
                 Box(
                     modifier = Modifier
-                        .size(80.dp)
+                        .size(70.dp)
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Whatshot,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun WeeklyProgressSection(weeklyData: List<DayData>) {
-    Column(modifier = Modifier.padding(24.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Weekly Activity",
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = Color(0xFF2C3E50)
-            )
-            Text(
-                text = "Last 7 Days",
-                fontSize = 12.sp,
-                color = Color.Gray
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(180.dp)
-                .background(Color.White, RoundedCornerShape(20.dp))
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
-        ) {
-            val displayData = if (weeklyData.isEmpty()) {
-                listOf(
-                    DayData("Mon", "M", 3, 0.6f),
-                    DayData("Tue", "T", 5, 1.0f),
-                    DayData("Wed", "W", 4, 0.8f),
-                    DayData("Thu", "T", 5, 1.0f),
-                    DayData("Fri", "F", 5, 1.0f),
-                    DayData("Sat", "S", 2, 0.4f),
-                    DayData("Sun", "S", 0, 0.0f, true)
-                )
-            } else weeklyData
-
-            displayData.forEach { day ->
-                BarChartItem(day)
-            }
-        }
-    }
-}
-
-@Composable
-fun BarChartItem(day: DayData) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Bottom,
-        modifier = Modifier.fillMaxHeight()
-    ) {
-        val barHeight = (day.completionRate * 100).dp
-        
-        Box(
-            modifier = Modifier
-                .width(32.dp)
-                .height(barHeight)
-                .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-                .background(
-                    if (day.isToday) Brush.verticalGradient(listOf(Color(0xFF4ECDC4), Color(0xFF45B7D1)))
-                    else Brush.verticalGradient(listOf(Color(0xFF2C3E50).copy(alpha = 0.1f), Color(0xFF2C3E50).copy(alpha = 0.2f)))
-                )
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = day.dayAbbr,
-            fontSize = 12.sp,
-            fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
-            color = if (day.isToday) Color(0xFF4ECDC4) else Color.Gray
-        )
-    }
-}
-
-@Composable
-fun DailyCheckInSection(completedPrayers: Set<String>, onTogglePrayer: (String) -> Unit) {
-    Card(
-        modifier = Modifier
-            .padding(horizontal = 24.dp)
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = "Today's Prayers",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                color = Color(0xFF2C3E50)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha").forEach { prayer ->
-                    PrayerCircleItem(
-                        name = prayer,
-                        isCompleted = completedPrayers.contains(prayer),
-                        onClick = { onTogglePrayer(prayer) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun PrayerCircleItem(name: String, isCompleted: Boolean, onClick: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(50.dp)
-                .clip(CircleShape)
-                .background(if (isCompleted) Color(0xFF4ECDC4) else Color(0xFFF0F0F0))
-                .clickable { onClick() },
-            contentAlignment = Alignment.Center
-        ) {
-            if (isCompleted) {
-                Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(24.dp))
-            } else {
-                Text(
-                    text = name.take(1),
-                    fontWeight = FontWeight.Bold,
-                    color = Color.LightGray
-                )
-            }
-        }
-        Text(
-            text = name,
-            fontSize = 11.sp,
-            modifier = Modifier.padding(top = 6.dp),
-            color = if (isCompleted) Color(0xFF2C3E50) else Color.Gray
-        )
-    }
-}
-
-@Composable
-fun PrayerBreakdownSection(stats: Map<String, Float>) {
-    Column(modifier = Modifier.padding(24.dp)) {
-        Text(
-            text = "Prayer Consistency",
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            color = Color(0xFF2C3E50)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                stats.forEach { (prayer, rate) ->
-                    PrayerStatRow(prayer, rate)
-                    if (prayer != stats.keys.last()) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF0F0F0))
+                    streakData.icon?.let {
+                        Icon(it, null, tint = Color.White, modifier = Modifier.size(36.dp))
                     }
                 }
             }
@@ -377,115 +182,149 @@ fun PrayerBreakdownSection(stats: Map<String, Float>) {
 }
 
 @Composable
-fun PrayerStatRow(name: String, rate: Float) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+fun WeeklyActivitySection(weeklyData: List<DayData>) {
+    Column(modifier = Modifier.padding(24.dp)) {
         Text(
-            text = name,
-            modifier = Modifier.width(70.dp),
-            fontWeight = FontWeight.Medium,
+            text = "Weekly Activity",
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleLarge,
             color = Color(0xFF2C3E50)
         )
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(10.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFF0F0F0))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(rate)
-                    .fillMaxHeight()
-                    .clip(CircleShape)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(Color(0xFF4ECDC4), Color(0xFF45B7D1))
-                        )
-                    )
-            )
-        }
-        Text(
-            text = "${(rate * 100).toInt()}%",
-            modifier = Modifier.width(45.dp),
-            textAlign = TextAlign.End,
-            fontWeight = FontWeight.Bold,
-            fontSize = 13.sp,
-            color = Color(0xFF4ECDC4)
-        )
-    }
-}
-
-@Composable
-fun BadgesSection(badges: List<Badge>, onViewAll: () -> Unit) {
-    Column(modifier = Modifier.padding(vertical = 12.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Achievements",
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = Color(0xFF2C3E50)
-            )
-            TextButton(onClick = onViewAll) {
-                Text("View All", color = Color(0xFF45B7D1))
-            }
-        }
+        Spacer(modifier = Modifier.height(16.dp))
         
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(2.dp)
         ) {
-            val displayBadges = if (badges.isEmpty()) {
-                listOf(
-                    Badge(1, "Early Bird", "Pray Fajr 7 days", Color(0xFFFFD93D), iconImage = Icons.Default.WbSunny),
-                    Badge(2, "Consistent", "30 day streak", Color(0xFFFF6B6B), iconImage = Icons.Default.AutoAwesome),
-                    Badge(3, "Community", "Joined a group", Color(0xFF4ECDC4), iconImage = Icons.Default.Groups)
-                )
-            } else badges
-
-            items(displayBadges) { badge ->
-                BadgeItem(badge)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                weeklyData.forEach { day ->
+                    BarItem(day)
+                }
             }
         }
     }
 }
 
 @Composable
-fun BadgeItem(badge: Badge) {
+fun BarItem(day: DayData) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(100.dp)
+        verticalArrangement = Arrangement.Bottom,
+        modifier = Modifier.fillMaxHeight()
     ) {
+        val barHeight = (day.completionRate * 120).dp
+        
         Box(
             modifier = Modifier
-                .size(80.dp)
-                .clip(CircleShape)
-                .background(badge.color.copy(alpha = 0.1f))
-                .drawBehind {
-                    drawCircle(
-                        color = badge.color.copy(alpha = 0.2f),
-                        radius = size.minDimension / 2,
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
-                    )
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            badge.iconImage?.let {
-                Icon(it, null, tint = badge.color, modifier = Modifier.size(32.dp))
-            }
-        }
+                .width(28.dp)
+                .height(barHeight.coerceAtLeast(4.dp))
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    if (day.isToday) Brush.verticalGradient(listOf(Color(0xFF4ECDC4), Color(0xFF45B7D1)))
+                    else Brush.verticalGradient(listOf(Color(0xFFE0E0E0), Color(0xFFBDBDBD)))
+                )
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = badge.title,
+            text = day.dayAbbr,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
+            fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Medium,
+            color = if (day.isToday) Color(0xFF4ECDC4) else Color.Gray
         )
+    }
+}
+
+@Composable
+fun ConsistencyBreakdownSection(stats: Map<String, Float>) {
+    Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+        Text(
+            text = "Prayer Consistency",
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleLarge,
+            color = Color(0xFF2C3E50)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(1.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                stats.forEach { (prayer, rate) ->
+                    ConsistencyRow(prayer, rate)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ConsistencyRow(name: String, rate: Float) {
+    Column {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(name, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
+            Text("${(rate * 100).toInt()}%", fontWeight = FontWeight.Black, color = Color(0xFF45B7D1))
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        LinearProgressIndicator(
+            progress = { rate },
+            modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
+            color = Color(0xFF4ECDC4),
+            trackColor = Color(0xFFF0F0F0)
+        )
+    }
+}
+
+@Composable
+fun HabitsPerformanceSection(habits: List<HabitEntity>) {
+    if (habits.isEmpty()) return
+    
+    Column(modifier = Modifier.padding(24.dp)) {
+        Text(
+            text = "Habit Streaks",
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleLarge,
+            color = Color(0xFF2C3E50)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(habits) { habit ->
+                HabitStreakItem(habit)
+            }
+        }
+    }
+}
+
+@Composable
+fun HabitStreakItem(habit: HabitEntity) {
+    Card(
+        modifier = Modifier.size(width = 140.dp, height = 120.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(habit.iconEmoji, fontSize = 24.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = habit.title, fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
+            Text(text = "${habit.streak} Day Streak", fontSize = 11.sp, color = Color(0xFFFF5722), fontWeight = FontWeight.Black)
+        }
     }
 }
 
@@ -495,35 +334,29 @@ fun ConsistencyInsights(completionRate: Float) {
         modifier = Modifier
             .padding(24.dp)
             .fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2C3E50))
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1B4C))
     ) {
         Row(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                Icons.Default.Lightbulb,
-                null,
-                tint = Color(0xFFFFD93D),
-                modifier = Modifier.size(32.dp)
-            )
+            Box(
+                modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Lightbulb, null, tint = Color(0xFFFFD93D))
+            }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
-                Text(
-                    text = "Smart Insight",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
+                Text("Coach Insight", color = Color.White, fontWeight = FontWeight.Bold)
                 Text(
                     text = if (completionRate > 0.8f) 
-                        "MashAllah! Your consistency is excellent. Maintaining this pace will help you reach your next milestone soon."
+                        "Excellent work! Your consistency is helping you build a strong spiritual routine."
                     else 
-                        "You're doing well! Try to focus on being more consistent with your prayers to strengthen your spiritual journey.",
+                        "Try to focus on small daily wins. Every prayer counts towards your goal.",
                     color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 12.sp,
-                    lineHeight = 18.sp
+                    fontSize = 12.sp
                 )
             }
         }

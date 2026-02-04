@@ -9,12 +9,16 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 @HiltViewModel
 class FamilyViewModel @Inject constructor(
     private val prayerDao: PrayerDao
 ) : ViewModel() {
+
+    private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     val familyMembers: StateFlow<List<FamilyMemberRecord>> = prayerDao.getAllFamilyMembers()
         .stateIn(
@@ -23,9 +27,46 @@ class FamilyViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    fun addFamilyMember(name: String) {
+    fun addFamilyMember(name: String, relationship: String) {
         viewModelScope.launch {
-            prayerDao.insertFamilyMember(FamilyMemberRecord(name = name, completedPrayers = 0))
+            val today = LocalDate.now().format(dateFormatter)
+            prayerDao.insertFamilyMember(
+                FamilyMemberRecord(
+                    name = name,
+                    relationship = relationship,
+                    lastActiveDate = today
+                )
+            )
+        }
+    }
+
+    fun incrementMemberPrayer(member: FamilyMemberRecord) {
+        viewModelScope.launch {
+            val today = LocalDate.now().format(dateFormatter)
+            val updatedMember = if (member.lastActiveDate == today) {
+                member.copy(
+                    completedPrayersToday = (member.completedPrayersToday + 1).coerceAtMost(5),
+                    totalCompletedPrayers = member.totalCompletedPrayers + 1
+                )
+            } else {
+                member.copy(
+                    completedPrayersToday = 1,
+                    totalCompletedPrayers = member.totalCompletedPrayers + 1,
+                    lastActiveDate = today
+                )
+            }
+            prayerDao.insertFamilyMember(updatedMember)
+        }
+    }
+
+    fun resetMemberPrayer(member: FamilyMemberRecord) {
+        viewModelScope.launch {
+            val today = LocalDate.now().format(dateFormatter)
+            val updatedMember = member.copy(
+                completedPrayersToday = 0,
+                lastActiveDate = today
+            )
+            prayerDao.insertFamilyMember(updatedMember)
         }
     }
 

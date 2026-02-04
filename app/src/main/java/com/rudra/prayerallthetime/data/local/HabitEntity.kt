@@ -8,10 +8,13 @@ data class HabitEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val title: String,
-    val goalValue: Int, // e.g., 10 minutes, 1 surah, 100 tasbeeh
-    val unit: String, // e.g., "min", "page", "times"
-    val category: String, // e.g., "Quran", "Dhikr", "Tahajjud"
-    val frequency: String = "Daily",
+    val description: String = "",
+    val motivation: String = "",
+    val goalValue: Int, 
+    val unit: String, 
+    val category: String, // "Spiritual", "Personality", "Protection"
+    val iconEmoji: String = "✨",
     var currentProgress: Int = 0,
-    val lastUpdated: String // YYYY-MM-DD to reset progress daily if needed
+    val lastUpdated: String,
+    val streak: Int = 0
 )

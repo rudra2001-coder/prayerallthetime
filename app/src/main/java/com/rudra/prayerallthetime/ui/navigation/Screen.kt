@@ -43,6 +43,10 @@ sealed class Screen(
     object Habits : Screen("habits", "Faith Habits", Icons.Default.AssignmentTurnedIn, "📈")
     object Duas : Screen("duas", "Dua Library", Icons.Default.MenuBook, "🤲")
     
+    // Quran Screens
+    object SurahList : Screen("surah_list", "Surah List")
+    object SurahDetail : Screen("surah_detail/{surahNumber}", "Surah Detail")
+
     // New Feature Screen
     object NearbyMosques : Screen("nearby_mosques", "Nearby Mosques", Icons.Default.Place, "🕌")
 
@@ -55,7 +59,8 @@ sealed class Screen(
             Ramadan, Worship, Family, Qibla, Tasbeeh, Wudu, Tahajjud,
             Charity, Calendar, Profile, Notifications, Achievements,
             Streaks, Charts, StreakDetails, RamadanTimer, Taraweeh,
-            FamilyMember, PrayerTimes, Report, Habits, Duas, NearbyMosques
+            FamilyMember, PrayerTimes, Report, Habits, Duas, NearbyMosques,
+            SurahList, SurahDetail
         )
     }
 }
