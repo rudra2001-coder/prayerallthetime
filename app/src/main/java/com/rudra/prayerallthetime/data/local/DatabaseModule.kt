@@ -22,4 +22,29 @@ object DatabaseModule {
     fun providePrayerDao(database: AppDatabase): PrayerDao {
         return database.prayerDao()
     }
+
+    @Provides
+    fun provideHadithDao(database: AppDatabase): HadithDao {
+        return database.hadithDao()
+    }
+
+    @Provides
+    fun provideHabitDao(database: AppDatabase): HabitDao {
+        return database.habitDao()
+    }
+
+    @Provides
+    fun provideDuaDao(database: AppDatabase): DuaDao {
+        return database.duaDao()
+    }
+
+    @Provides
+    fun provideAyahDao(database: AppDatabase): AyahDao {
+        return database.ayahDao()
+    }
+
+    @Provides
+    fun provideCharityDao(database: AppDatabase): CharityDao {
+        return database.charityDao()
+    }
 }

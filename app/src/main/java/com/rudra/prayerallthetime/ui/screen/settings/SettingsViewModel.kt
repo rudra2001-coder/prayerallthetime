@@ -1,15 +1,22 @@
 package com.rudra.prayerallthetime.ui.screen.settings
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.rudra.prayerallthetime.data.local.AppDatabase
+import com.rudra.prayerallthetime.data.local.LocalSettings
 import com.rudra.prayerallthetime.data.repository.SettingsRepository
+import com.rudra.prayerallthetime.ui.screen.prayer.PrayerViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val repository: SettingsRepository
+    private val repository: SettingsRepository,
+    private val localSettings: LocalSettings,
+    private val database: AppDatabase
 ) : ViewModel() {
 
     private val _notificationsEnabled = MutableStateFlow(repository.isNotificationEnabled())
@@ -42,5 +49,14 @@ class SettingsViewModel @Inject constructor(
     fun togglePremium(enabled: Boolean) {
         repository.setPremiumEnabled(enabled)
         _premiumEnabled.value = enabled
+    }
+
+    fun resetFullApp(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            localSettings.clearAllData()
+            repository.clearAllData()
+            database.clearAllTables()
+            onComplete()
+        }
     }
 }

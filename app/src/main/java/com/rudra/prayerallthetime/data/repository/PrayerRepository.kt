@@ -8,6 +8,7 @@ import com.rudra.prayerallthetime.core.prayer.PrayerTimesCalculator
 import com.rudra.prayerallthetime.data.local.LocalSettings
 import com.rudra.prayerallthetime.data.local.PrayerDao
 import com.rudra.prayerallthetime.data.local.PrayerTimeEntity
+import com.rudra.prayerallthetime.data.remote.PrayerApiService
 import com.rudra.prayerallthetime.ui.screen.prayer.PrayerData
 import com.rudra.prayerallthetime.ui.screen.prayer.PrayerDetails
 import com.rudra.prayerallthetime.util.NetworkUtils
@@ -26,10 +27,13 @@ class PrayerRepository @Inject constructor(
     private val prayerDao: PrayerDao,
     private val networkUtils: NetworkUtils,
     private val localSettings: LocalSettings,
+    private val prayerApiService: PrayerApiService,
     @ApplicationContext private val context: Context
 ) {
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private val apiDateFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
     private val timeFormat = java.text.SimpleDateFormat("hh:mm a", Locale.getDefault())
+    private val apiTimeFormat = java.text.SimpleDateFormat("HH:mm", Locale.getDefault())
 
     suspend fun getPrayerTimes(latitude: Double, longitude: Double, date: LocalDate): PrayerData {
         val dateStr = date.format(dateFormatter)
@@ -40,7 +44,7 @@ class PrayerRepository @Inject constructor(
             PrayerTimeEntity(
                 date = dateStr,
                 fajr = localSettings.manualFajr.first(),
-                sunrise = "--:--", // Manual doesn't strictly track sunrise unless we want to
+                sunrise = "--:--", 
                 dhuhr = localSettings.manualDhuhr.first(),
                 asr = localSettings.manualAsr.first(),
                 maghrib = localSettings.manualMaghrib.first(),
@@ -52,19 +56,20 @@ class PrayerRepository @Inject constructor(
                 isFromApi = false
             )
         } else {
-            // 1. Try Local DB Cache
             val cachedEntity = prayerDao.getPrayerTimesByDate(dateStr)
             
-            // 2. Decide whether to fetch from Remote or Offline Calculation
             if (networkUtils.isOnline()) {
-                fetchRemoteAndCache(latitude, longitude, date)
+                try {
+                    fetchRemoteAndCache(latitude, longitude, date)
+                } catch (e: Exception) {
+                    cachedEntity ?: calculateWithCoreLogic(latitude, longitude, date)
+                }
             } else {
                 cachedEntity ?: calculateWithCoreLogic(latitude, longitude, date)
             }
         }
 
-        // Using Internal Hijri Logic
-        val hijriDateStr = HijriCalendar.getHijriDate(date)
+        val hijriDateStr = entity.hijriDate ?: HijriCalendar.getHijriDate(date)
 
         val allPrayers = mutableListOf<PrayerDetails>()
         allPrayers.add(PrayerDetails("Fajr", "الفجر", entity.fajr))
@@ -95,8 +100,39 @@ class PrayerRepository @Inject constructor(
     }
 
     private suspend fun fetchRemoteAndCache(latitude: Double, longitude: Double, date: LocalDate): PrayerTimeEntity {
-        return calculateWithCoreLogic(latitude, longitude, date).apply {
-            prayerDao.insertPrayerTimes(this)
+        val response = prayerApiService.getPrayerTimes(
+            date = date.format(apiDateFormatter),
+            latitude = latitude,
+            longitude = longitude,
+            method = 1 // University of Islamic Sciences, Karachi (Good for Bangladesh/Subcontinent)
+        )
+        
+        val timings = response.data.timings
+        val entity = PrayerTimeEntity(
+            date = date.format(dateFormatter),
+            fajr = formatApiTimeTo12h(timings.Fajr),
+            sunrise = formatApiTimeTo12h(timings.Sunrise),
+            dhuhr = formatApiTimeTo12h(timings.Dhuhr),
+            asr = formatApiTimeTo12h(timings.Asr),
+            maghrib = formatApiTimeTo12h(timings.Maghrib),
+            isha = formatApiTimeTo12h(timings.Isha),
+            hijriDate = "${response.data.date.hijri.date} ${response.data.date.hijri.month.en}",
+            city = response.data.meta.timezone,
+            latitude = latitude,
+            longitude = longitude,
+            isFromApi = true
+        )
+        prayerDao.insertPrayerTimes(entity)
+        return entity
+    }
+
+    private fun formatApiTimeTo12h(apiTime: String): String {
+        return try {
+            val cleanTime = apiTime.substringBefore(" (") // Remove timezone info if any
+            val date = apiTimeFormat.parse(cleanTime)
+            timeFormat.format(date!!)
+        } catch (e: Exception) {
+            apiTime
         }
     }
 
@@ -115,7 +151,7 @@ class PrayerRepository @Inject constructor(
             maghrib = times.maghrib,
             isha = times.isha,
             hijriDate = HijriCalendar.getHijriDate(date),
-            city = "Current Location",
+            city = "Offline Calc",
             latitude = latitude,
             longitude = longitude,
             isFromApi = false
@@ -124,7 +160,6 @@ class PrayerRepository @Inject constructor(
 
     private fun findNextPrayer(prayers: List<PrayerDetails>, now: Calendar): PrayerDetails {
         val currentTime = timeFormat.format(now.time)
-        // Sort prayers by time to find the next one correctly
         val sortedPrayers = prayers.filter { it.name != "Sunrise" }.sortedBy { 
             parseTimeToMillis(it.time, LocalDate.now()) 
         }
@@ -134,7 +169,7 @@ class PrayerRepository @Inject constructor(
                 return prayer
             }
         }
-        return sortedPrayers[0] // Return Fajr (next day)
+        return sortedPrayers[0]
     }
 
     private fun isTimeAfter(time1: String, time2: String): Boolean {

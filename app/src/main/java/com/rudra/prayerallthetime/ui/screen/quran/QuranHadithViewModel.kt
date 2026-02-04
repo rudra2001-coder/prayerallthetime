@@ -3,6 +3,7 @@ package com.rudra.prayerallthetime.ui.screen.quran
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudra.prayerallthetime.data.repository.HadithRepository
+import com.rudra.prayerallthetime.data.repository.QuranRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +13,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class QuranHadithViewModel @Inject constructor(
-    private val hadithRepository: HadithRepository
+    private val hadithRepository: HadithRepository,
+    private val quranRepository: QuranRepository
 ) : ViewModel() {
 
     private val _ayatArabic = MutableStateFlow("بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ")
@@ -40,22 +42,42 @@ class QuranHadithViewModel @Inject constructor(
     val isHadithBookmarked: StateFlow<Boolean> = _isHadithBookmarked.asStateFlow()
 
     init {
-        fetchHadith()
+        fetchDailyContent()
     }
 
-    private fun fetchHadith() {
+    private fun fetchDailyContent() {
         viewModelScope.launch {
-            val hadith = hadithRepository.getRandomHadith()
-            if (hadith != null) {
-                _hadithArabic.value = hadith.hadithArabic ?: ""
-                _hadithEnglish.value = hadith.hadithEnglish ?: ""
-                _hadithInfo.value = "${hadith.book.bookName}, Hadith ${hadith.hadithNumber}"
+            // Fetch Ayat of the Day
+            try {
+                quranRepository.getRandomAyah()?.let { ayah ->
+                    _ayatArabic.value = ayah.text
+                    _ayatEnglish.value = ayah.translation ?: ""
+                    _surahInfo.value = "${ayah.surahName ?: "Surah ${ayah.surah}"} ${ayah.surah}:${ayah.ayah}"
+                    _isAyatBookmarked.value = ayah.isBookmarked
+                }
+            } catch (e: Exception) {
+                // Fallback handled by initial values
+            }
+
+            // Fetch Hadith of the Day
+            try {
+                hadithRepository.getRandomHadith()?.let { hadith ->
+                    _hadithArabic.value = hadith.hadithArabic ?: ""
+                    _hadithEnglish.value = hadith.hadithEnglish ?: ""
+                    _hadithInfo.value = "${hadith.bookName}, Hadith ${hadith.hadithNumber}"
+                }
+            } catch (e: Exception) {
+                // Fallback handled by initial values
             }
         }
     }
 
     fun toggleAyatBookmark() {
-        _isAyatBookmarked.value = !_isAyatBookmarked.value
+        viewModelScope.launch {
+            // In a real scenario, we'd need the current Ayah entity to update it in DB
+            // For now we just toggle the UI state
+            _isAyatBookmarked.value = !_isAyatBookmarked.value
+        }
     }
 
     fun toggleHadithBookmark() {

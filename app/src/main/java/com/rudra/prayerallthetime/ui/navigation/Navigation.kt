@@ -26,10 +26,12 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.rudra.prayerallthetime.ui.screen.analytics.AnalyticsScreen
 import com.rudra.prayerallthetime.ui.screen.analytics.AnalyticsViewModel
 import com.rudra.prayerallthetime.ui.screen.calendar.CalendarScreen
@@ -37,6 +39,8 @@ import com.rudra.prayerallthetime.ui.screen.calendar.CalendarViewModel
 import com.rudra.prayerallthetime.ui.screen.dashboard.CompleteDashboardScreen
 import com.rudra.prayerallthetime.ui.screen.dashboard.DashboardViewModel
 import com.rudra.prayerallthetime.ui.screen.explore.ExploreScreen
+import com.rudra.prayerallthetime.ui.screen.explore.ExploreViewModel
+import com.rudra.prayerallthetime.ui.screen.explore.NearbyMosquesScreen
 import com.rudra.prayerallthetime.ui.screen.family.FamilyScreen
 import com.rudra.prayerallthetime.ui.screen.family.FamilyViewModel
 import com.rudra.prayerallthetime.ui.screen.prayer.PrayerViewModel
@@ -45,6 +49,8 @@ import com.rudra.prayerallthetime.ui.screen.qibla.QiblaScreen
 import com.rudra.prayerallthetime.ui.screen.qibla.QiblaViewModel
 import com.rudra.prayerallthetime.ui.screen.quran.QuranHadithScreen
 import com.rudra.prayerallthetime.ui.screen.quran.QuranHadithViewModel
+import com.rudra.prayerallthetime.ui.screen.quran.SurahDetailScreen
+import com.rudra.prayerallthetime.ui.screen.quran.SurahListScreen
 import com.rudra.prayerallthetime.ui.screen.ramadan.RamadanScreen
 import com.rudra.prayerallthetime.ui.screen.ramadan.RamadanViewModel
 import com.rudra.prayerallthetime.ui.screen.report.ReportScreen
@@ -57,9 +63,14 @@ import com.rudra.prayerallthetime.ui.screen.worship.WorshipViewModel
 import com.rudra.prayerallthetime.ui.screen.wuduguide.WuduGuideScreen
 import com.rudra.prayerallthetime.ui.screen.wuduguide.WuduGuideViewModel
 import com.rudra.prayerallthetime.ui.screen.charity.CharityScreen
+import com.rudra.prayerallthetime.ui.screen.charity.CharityViewModel
 import com.rudra.prayerallthetime.ui.screen.profile.ProfileScreen
 import com.rudra.prayerallthetime.ui.screen.notifications.NotificationScreen
 import com.rudra.prayerallthetime.ui.screen.achievements.AchievementsScreen
+import com.rudra.prayerallthetime.ui.screen.habits.HabitsScreen
+import com.rudra.prayerallthetime.ui.screen.habits.HabitsViewModel
+import com.rudra.prayerallthetime.ui.screen.duas.DuasScreen
+import com.rudra.prayerallthetime.ui.screen.duas.DuasViewModel
 import com.rudra.prayerallthetime.ui.theme.IslamicGold
 
 @Composable
@@ -68,7 +79,6 @@ fun PremiumNavigation() {
     val prayerViewModel: PrayerViewModel = hiltViewModel()
     val dashboardViewModel: DashboardViewModel = hiltViewModel()
     val settingsViewModel: SettingsViewModel = hiltViewModel()
-    val analyticsViewModel: AnalyticsViewModel = hiltViewModel()
     val quranHadithViewModel: QuranHadithViewModel = hiltViewModel()
     val ramadanViewModel: RamadanViewModel = hiltViewModel()
     val worshipViewModel: WorshipViewModel = hiltViewModel()
@@ -77,6 +87,10 @@ fun PremiumNavigation() {
     val calendarViewModel: CalendarViewModel = hiltViewModel()
     val tahajjudViewModel: TahajjudViewModel = hiltViewModel()
     val wuduGuideViewModel: WuduGuideViewModel = hiltViewModel()
+    val habitsViewModel: HabitsViewModel = hiltViewModel()
+    val duasViewModel: DuasViewModel = hiltViewModel()
+    val charityViewModel: CharityViewModel = hiltViewModel()
+    val exploreViewModel: ExploreViewModel = hiltViewModel()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -101,7 +115,7 @@ fun PremiumNavigation() {
         },
         floatingActionButton = {
             if (currentDestination?.route == Screen.Dashboard.route) {
-                PremiumFloatingActionButton(navController = navController, prayerViewModel = prayerViewModel)
+                PremiumFloatingActionButton(navController = navController)
             }
         }
     ) { innerPadding ->
@@ -153,7 +167,7 @@ fun PremiumNavigation() {
             composable(Screen.Ramadan.route) {
                 RamadanScreen(
                     navController = navController,
-                    prayerViewModel = prayerViewModel
+                    viewModel = ramadanViewModel
                 )
             }
 
@@ -162,7 +176,7 @@ fun PremiumNavigation() {
             }
 
             composable(Screen.Family.route) {
-                FamilyScreen(navController = navController, prayerViewModel = prayerViewModel)
+                FamilyScreen(navController = navController, viewModel = familyViewModel)
             }
 
             composable(Screen.Qibla.route) {
@@ -195,7 +209,7 @@ fun PremiumNavigation() {
             }
             
             composable(Screen.Charity.route) { 
-                CharityScreen(navController = navController) 
+                CharityScreen(navController = navController, viewModel = charityViewModel) 
             }
             
             composable(Screen.Profile.route) { 
@@ -223,15 +237,15 @@ fun PremiumNavigation() {
             }
             
             composable(Screen.RamadanTimer.route) { 
-                RamadanScreen(navController = navController, prayerViewModel = prayerViewModel) 
+                RamadanScreen(navController = navController, viewModel = ramadanViewModel) 
             }
             
             composable(Screen.Taraweeh.route) { 
-                RamadanScreen(navController = navController, prayerViewModel = prayerViewModel) 
+                RamadanScreen(navController = navController, viewModel = ramadanViewModel)
             }
             
             composable(Screen.FamilyMember.route) { 
-                FamilyScreen(navController = navController, prayerViewModel = prayerViewModel) 
+                FamilyScreen(navController = navController, viewModel = familyViewModel) 
             }
             
             composable(Screen.Hadith.route) {
@@ -240,6 +254,30 @@ fun PremiumNavigation() {
 
             composable(Screen.Report.route) {
                 ReportScreen(navController = navController)
+            }
+
+            composable(Screen.Habits.route) {
+                HabitsScreen(navController = navController, viewModel = habitsViewModel)
+            }
+
+            composable(Screen.Duas.route) {
+                DuasScreen(navController = navController, viewModel = duasViewModel)
+            }
+            
+            composable(Screen.NearbyMosques.route) {
+                NearbyMosquesScreen(navController = navController, viewModel = exploreViewModel)
+            }
+
+            composable(Screen.SurahList.route) {
+                SurahListScreen(navController = navController)
+            }
+
+            composable(
+                route = Screen.SurahDetail.route,
+                arguments = listOf(navArgument("surahNumber") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val surahNumber = backStackEntry.arguments?.getInt("surahNumber") ?: 1
+                SurahDetailScreen(surahNumber = surahNumber, navController = navController)
             }
         }
     }
@@ -270,7 +308,7 @@ fun PremiumTopAppBar(
     navController: NavHostController
 ) {
     val title = currentDestination?.let { destination ->
-        Screen.allScreens().find { it.route == destination.route }?.title ?: "Salaam"
+        Screen.allScreens().find { it.route == destination.route || (it.route.contains("{") && destination.route?.startsWith(it.route.substringBefore("{")) == true) }?.title ?: "Salaam"
     } ?: "Salaam"
 
     CenterAlignedTopAppBar(
@@ -419,7 +457,7 @@ fun PremiumBottomNavigationBar(
 }
 
 @Composable
-fun PremiumFloatingActionButton(navController: NavHostController, prayerViewModel: PrayerViewModel) {
+fun PremiumFloatingActionButton(navController: NavHostController) {
     FloatingActionButton(
         onClick = { navController.navigate(Screen.Report.route) },
         containerColor = IslamicGold,

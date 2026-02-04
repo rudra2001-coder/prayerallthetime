@@ -7,16 +7,23 @@ import com.rudra.prayerallthetime.data.Prayer
 import com.rudra.prayerallthetime.data.local.LocalSettings
 import com.rudra.prayerallthetime.data.local.PrayerDao
 import com.rudra.prayerallthetime.data.local.PrayerRecord
+import com.rudra.prayerallthetime.data.local.HabitEntity
+import com.rudra.prayerallthetime.data.local.DuaEntity
 import com.rudra.prayerallthetime.data.repository.HadithRepository
 import com.rudra.prayerallthetime.data.repository.PrayerRepository
+import com.rudra.prayerallthetime.data.repository.HabitRepository
+import com.rudra.prayerallthetime.data.repository.DuaRepository
 import com.rudra.prayerallthetime.ui.screen.prayer.PrayerData
+import com.rudra.prayerallthetime.ui.screen.prayer.DayData
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.time.DayOfWeek
 import java.util.Locale
 import javax.inject.Inject
 
@@ -26,7 +33,9 @@ class DashboardViewModel @Inject constructor(
     private val locationService: LocationService,
     private val localSettings: LocalSettings,
     private val prayerDao: PrayerDao,
-    private val hadithRepository: HadithRepository
+    private val hadithRepository: HadithRepository,
+    private val habitRepository: HabitRepository,
+    private val duaRepository: DuaRepository
 ) : ViewModel() {
 
     private val defaultLat = 23.8103
@@ -47,12 +56,15 @@ class DashboardViewModel @Inject constructor(
     val gregorianDate = MutableStateFlow(LocalDate.now().toString())
     val qiblaDirection = MutableStateFlow(0f)
 
-    // Live Current Time
     private val _currentTime = MutableStateFlow(LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.getDefault())))
     val currentTime: StateFlow<String> = _currentTime.asStateFlow()
 
     val completionRate = MutableStateFlow(0.0f)
-    val currentStreak = MutableStateFlow(7)
+    val currentStreak = MutableStateFlow(0)
+    
+    private val _weeklyCompletion = MutableStateFlow<List<Boolean>>(List(7) { false })
+    val weeklyCompletion: StateFlow<List<Boolean>> = _weeklyCompletion.asStateFlow()
+
     val tasbeehCount = MutableStateFlow(0)
     val wuduStatus = localSettings.wuduStatus.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val currentSurah = localSettings.currentSurah.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Al-Fatihah")
@@ -65,24 +77,51 @@ class DashboardViewModel @Inject constructor(
     private val _completedPrayers = MutableStateFlow<Set<String>>(emptySet())
     val completedPrayers: StateFlow<Set<String>> = _completedPrayers.asStateFlow()
 
+    val habits: StateFlow<List<HabitEntity>> = habitRepository.getAllHabits()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    
+    val dailyDua = MutableStateFlow<DuaEntity?>(null)
+
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    private val todayStr = LocalDate.now().format(dateFormatter)
+    private var lastCheckedDate = LocalDate.now()
+    private val todayStr: String get() = LocalDate.now().format(dateFormatter)
+
+    private var completionCollectorJob: Job? = null
 
     init {
+        refreshAllData()
+        startTimeTickers()
+        viewModelScope.launch {
+            habitRepository.resetDailyHabitsIfNecessary()
+        }
+    }
+
+    private fun refreshAllData() {
         loadInitialData()
         loadLocalCounts()
         fetchHadithOfTheDay()
-        loadCompletedPrayers()
-        startTimeTickers()
+        loadCompletedPrayers() // This sets up the observer for the current day
+        fetchDailyDua()
+        loadWeeklyProgress()
+        calculateStreak()
     }
 
     private fun startTimeTickers() {
         viewModelScope.launch {
             while (true) {
-                // Update Current Time
-                _currentTime.value = LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.getDefault()))
+                val now = LocalTime.now()
+                val nowDate = LocalDate.now()
+                
+                // Automatic Reset logic at 12:00 AM
+                if (nowDate != lastCheckedDate) {
+                    lastCheckedDate = nowDate
+                    gregorianDate.value = nowDate.toString()
+                    refreshAllData()
+                    habitRepository.resetDailyHabitsIfNecessary()
+                }
 
-                // Update Countdown
+                _currentTime.value = now.format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.getDefault()))
+
                 if (nextPrayerMillis.value > 0) {
                     val diff = nextPrayerMillis.value - System.currentTimeMillis()
                     if (diff > 0) {
@@ -90,7 +129,7 @@ class DashboardViewModel @Inject constructor(
                         val minutes = (diff / (1000 * 60)) % 60
                         val seconds = (diff / 1000) % 60
                         countdown.value = String.format("%02d:%02d:%02d", hours, minutes, seconds)
-                    } else if (diff < -2000) { // If prayer time just passed, refresh
+                    } else if (diff < -2000) { 
                         refreshPrayerData()
                     }
                 }
@@ -145,9 +184,60 @@ class DashboardViewModel @Inject constructor(
         }
         _prayers.value = prayerList
         
-        val prayerOnlyList = prayerList.filter { it.name != "Sunrise" }
+        updateCompletionMetrics(prayerList)
+    }
+
+    private fun updateCompletionMetrics(prayerList: List<Prayer>) {
+        val prayerOnlyList = prayerList.filter { it.name != "Sunrise" && it.name != "Sunset" }
         val completedCount = prayerOnlyList.count { it.isPrayed }
         completionRate.value = if (prayerOnlyList.isNotEmpty()) completedCount.toFloat() / prayerOnlyList.size else 0f
+    }
+
+    private fun loadWeeklyProgress() {
+        viewModelScope.launch {
+            val today = LocalDate.now()
+            val startOfWeek = today.with(DayOfWeek.MONDAY)
+            val weekResults = mutableListOf<Boolean>()
+            
+            for (i in 0..6) {
+                val date = startOfWeek.plusDays(i.toLong()).format(dateFormatter)
+                val dayRecords = prayerDao.getRecordsForDate(date).first()
+                val prayerOnlyRecords = dayRecords.filter { it.prayerName != "Sunrise" && it.prayerName != "Sunset" }
+                val isPerfectDay = prayerOnlyRecords.isNotEmpty() && prayerOnlyRecords.all { it.isCompleted }
+                weekResults.add(isPerfectDay)
+            }
+            _weeklyCompletion.value = weekResults
+        }
+    }
+
+    private fun calculateStreak() {
+        viewModelScope.launch {
+            prayerDao.getAllRecords().first().let { allRecords ->
+                if (allRecords.isEmpty()) {
+                    currentStreak.value = 0
+                    return@let
+                }
+
+                val prayerNames = listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha")
+                val dailyCompletion = allRecords.groupBy { it.date }.mapValues { entry ->
+                    val dayPrayers = entry.value.filter { it.prayerName in prayerNames }
+                    dayPrayers.size >= 5 && dayPrayers.all { it.isCompleted }
+                }
+
+                var streak = 0
+                var currentDate = LocalDate.now()
+                
+                if (dailyCompletion[currentDate.format(dateFormatter)] != true) {
+                    currentDate = currentDate.minusDays(1)
+                }
+
+                while (dailyCompletion[currentDate.format(dateFormatter)] == true) {
+                    streak++
+                    currentDate = currentDate.minusDays(1)
+                }
+                currentStreak.value = streak
+            }
+        }
     }
 
     fun togglePrayerByName(prayerName: String) {
@@ -162,7 +252,10 @@ class DashboardViewModel @Inject constructor(
             if (index != -1) {
                 currentList[index] = currentList[index].copy(isPrayed = newStatus)
                 _prayers.value = currentList
+                updateCompletionMetrics(currentList)
             }
+            loadWeeklyProgress()
+            calculateStreak()
         }
     }
 
@@ -181,7 +274,7 @@ class DashboardViewModel @Inject constructor(
 
     private fun loadLocalCounts() {
         viewModelScope.launch {
-            prayerDao.getTasbeehForDate(todayStr)?.let { tasbeehCount.value = it.totalCount }
+            prayerDao.getTasbeehForDate(todayStr)?.let { tasbeehCount.value = it.totalCount } ?: run { tasbeehCount.value = 0 }
         }
     }
 
@@ -190,16 +283,34 @@ class DashboardViewModel @Inject constructor(
             hadithRepository.getRandomHadith()?.let {
                 hadithArabic.value = it.hadithArabic ?: ""
                 hadithEnglish.value = it.hadithEnglish ?: ""
-                hadithInfo.value = "${it.book.bookName}, Hadith ${it.hadithNumber}"
+                hadithInfo.value = "${it.bookName}, Hadith ${it.hadithNumber}"
+            }
+        }
+    }
+
+    private fun fetchDailyDua() {
+        viewModelScope.launch {
+            duaRepository.preloadDuasIfEmpty()
+            duaRepository.getAllDuas().first().let { list ->
+                if (list.isNotEmpty()) {
+                    dailyDua.value = list.random()
+                }
             }
         }
     }
 
     private fun loadCompletedPrayers() {
-        viewModelScope.launch {
+        completionCollectorJob?.cancel()
+        completionCollectorJob = viewModelScope.launch {
             prayerDao.getRecordsForDate(todayStr).collect { records ->
                 _completedPrayers.value = records.filter { it.isCompleted }.map { it.prayerName }.toSet()
             }
+        }
+    }
+
+    fun incrementHabit(habitId: Int) {
+        viewModelScope.launch {
+            habitRepository.incrementProgress(habitId)
         }
     }
 
@@ -207,6 +318,5 @@ class DashboardViewModel @Inject constructor(
     fun isAlarmSet() = true
     fun getQiblaDirection() = qiblaDirection.value
     fun toggleAlarm() {}
-    fun addTodayToStreak() { currentStreak.value++ }
     fun toggleWuduStatus() { viewModelScope.launch { localSettings.updateWuduStatus(!wuduStatus.value) } }
 }

@@ -18,7 +18,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.DayOfWeek
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 @HiltViewModel
@@ -66,13 +68,16 @@ class PrayerViewModel @Inject constructor(
     
     val isRamadan = MutableStateFlow(true)
     val taraweehCount = MutableStateFlow(0)
-    val currentStreak = MutableStateFlow(7)
-    val completionRate = MutableStateFlow(0.85f)
-    val weeklyDayData = MutableStateFlow(emptyList<DayData>())
+    
+    private val _currentStreak = MutableStateFlow(0)
+    val currentStreak: StateFlow<Int> = _currentStreak.asStateFlow()
+    
+    val completionRate = MutableStateFlow(0.0f)
+    val weeklyDayData = MutableStateFlow<List<DayData>>(emptyList())
     
     val fastingCountdown = MutableStateFlow("00:00:00")
-    val suhoorTime = MutableStateFlow("--:--")
     val iftarTime = MutableStateFlow("--:--")
+    val suhoorTime = MutableStateFlow("--:--")
     val ramadanDay = MutableStateFlow(0)
 
     val ayatArabic = MutableStateFlow("بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ")
@@ -84,20 +89,15 @@ class PrayerViewModel @Inject constructor(
     val familyMembers: StateFlow<List<FamilyMemberRecord>> = prayerDao.getAllFamilyMembers()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _prayerStats = MutableStateFlow<Map<String, Float>>(mapOf(
-        "Fajr" to 0.8f,
-        "Dhuhr" to 0.9f,
-        "Asr" to 0.75f,
-        "Maghrib" to 0.95f,
-        "Isha" to 0.85f
-    ))
+    private val _prayerStats = MutableStateFlow<Map<String, Float>>(emptyMap())
     val prayerStats: StateFlow<Map<String, Float>> = _prayerStats.asStateFlow()
 
     val earnedBadges = MutableStateFlow(emptyList<Badge>())
     val upcomingBadges = MutableStateFlow(emptyList<Badge>())
 
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    private val todayStr = LocalDate.now().format(dateFormatter)
+    private var lastCheckedDate = LocalDate.now()
+    private val todayStr: String get() = LocalDate.now().format(dateFormatter)
 
     init {
         loadInitialData()
@@ -105,6 +105,7 @@ class PrayerViewModel @Inject constructor(
         loadLocalTaraweeh()
         startCountdownTicker()
         observeManualSettingsChange()
+        observePrayerRecords()
     }
     
     private fun observeManualSettingsChange() {
@@ -121,6 +122,15 @@ class PrayerViewModel @Inject constructor(
     private fun startCountdownTicker() {
         viewModelScope.launch {
             while (true) {
+                val nowDate = LocalDate.now()
+                if (nowDate != lastCheckedDate) {
+                    lastCheckedDate = nowDate
+                    gregorianDate.value = nowDate.toString()
+                    refreshData()
+                    loadLocalTasbeeh()
+                    loadLocalTaraweeh()
+                }
+
                 if (nextPrayerMillis.value > 0) {
                     val diff = nextPrayerMillis.value - System.currentTimeMillis()
                     if (diff > 0) {
@@ -137,6 +147,34 @@ class PrayerViewModel @Inject constructor(
                     }
                 }
                 delay(1000)
+            }
+        }
+    }
+
+    private fun observePrayerRecords() {
+        viewModelScope.launch {
+            prayerDao.getAllRecords().collect { allRecords ->
+                calculateConsistencyStats(allRecords)
+                calculateStreak(allRecords)
+                loadWeeklyProgress()
+            }
+        }
+        
+        viewModelScope.launch {
+            prayerDao.getRecordsForDate(todayStr).collect { records ->
+                val currentList = _prayers.value
+                if (currentList.isNotEmpty()) {
+                    val updatedList = currentList.map { prayer ->
+                        val record = records.find { it.prayerName == prayer.name }
+                        prayer.copy(isPrayed = record?.isCompleted ?: false)
+                    }
+                    _prayers.value = updatedList
+                    
+                    val dailyPrayers = updatedList.filter { it.name != "Sunrise" && it.name != "Sunset" }
+                    if (dailyPrayers.isNotEmpty()) {
+                        completionRate.value = dailyPrayers.count { it.isPrayed }.toFloat() / dailyPrayers.size
+                    }
+                }
             }
         }
     }
@@ -189,7 +227,12 @@ class PrayerViewModel @Inject constructor(
                 suhoorTime.value = data.allPrayers.find { it.name.equals("Fajr", true) }?.time ?: "--:--"
                 iftarTime.value = data.allPrayers.find { it.name.equals("Maghrib", true) }?.time ?: "--:--"
                 
-                syncPrayersWithLocalDb(data)
+                val initialRecords = prayerDao.getRecordsForDate(todayStr).first()
+                val prayerList = data.allPrayers.map { detail ->
+                    val isPrayed = initialRecords.find { it.prayerName == detail.name }?.isCompleted ?: false
+                    Prayer(detail.name, detail.time, isPrayed)
+                }
+                _prayers.value = prayerList
                 
             } catch (e: Exception) {
                 prayerState.value = PrayerState.Error(e.message ?: "Unknown error")
@@ -197,19 +240,71 @@ class PrayerViewModel @Inject constructor(
         }
     }
 
-    private suspend fun syncPrayersWithLocalDb(data: PrayerData) {
-        val localRecords = prayerDao.getRecordsForDate(todayStr).first()
-        
-        val prayerList = data.allPrayers.map { detail ->
-            val isPrayed = localRecords.find { it.prayerName == detail.name }?.isCompleted ?: false
-            Prayer(detail.name, detail.time, isPrayed)
+    private fun loadWeeklyProgress() {
+        viewModelScope.launch {
+            val today = LocalDate.now()
+            val startOfWeek = today.with(DayOfWeek.MONDAY)
+            val weekDataList = mutableListOf<DayData>()
+            
+            for (i in 0..6) {
+                val date = startOfWeek.plusDays(i.toLong())
+                val dateStr = date.format(dateFormatter)
+                val dayRecords = prayerDao.getRecordsForDate(dateStr).first()
+                val prayerOnlyRecords = dayRecords.filter { it.prayerName != "Sunrise" && it.prayerName != "Sunset" }
+                val completed = prayerOnlyRecords.count { it.isCompleted }
+                val total = if (prayerOnlyRecords.isNotEmpty()) prayerOnlyRecords.size else 5
+                val rate = completed.toFloat() / total.toFloat()
+                
+                weekDataList.add(
+                    DayData(
+                        dayName = date.dayOfWeek.name,
+                        dayAbbr = date.dayOfWeek.name.take(1),
+                        completedPrayers = completed,
+                        completionRate = rate,
+                        isToday = date == today
+                    )
+                )
+            }
+            weeklyDayData.value = weekDataList
         }
-        _prayers.value = prayerList
-        
-        val dailyPrayers = prayerList.filter { it.name != "Sunrise" }
-        if (dailyPrayers.isNotEmpty()) {
-            completionRate.value = dailyPrayers.count { it.isPrayed }.toFloat() / dailyPrayers.size
+    }
+
+    private fun calculateConsistencyStats(allRecords: List<PrayerRecord>) {
+        if (allRecords.isEmpty()) {
+            _prayerStats.value = emptyMap()
+            return
         }
+        val prayerNames = listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha")
+        val stats = mutableMapOf<String, Float>()
+        val distinctDates = allRecords.map { it.date }.distinct()
+        val totalDays = distinctDates.size.coerceAtLeast(1)
+        prayerNames.forEach { name ->
+            val completedDays = allRecords.count { it.prayerName == name && it.isCompleted }
+            stats[name] = completedDays.toFloat() / totalDays.toFloat()
+        }
+        _prayerStats.value = stats
+    }
+
+    private fun calculateStreak(allRecords: List<PrayerRecord>) {
+        if (allRecords.isEmpty()) {
+            _currentStreak.value = 0
+            return
+        }
+        val prayerNames = listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha")
+        val dailyCompletion = allRecords.groupBy { it.date }.mapValues { entry ->
+            val dayPrayers = entry.value.filter { it.prayerName in prayerNames }
+            dayPrayers.size >= 5 && dayPrayers.all { it.isCompleted }
+        }
+        var streak = 0
+        var currentDate = LocalDate.now()
+        if (dailyCompletion[currentDate.format(dateFormatter)] != true) {
+            currentDate = currentDate.minusDays(1)
+        }
+        while (dailyCompletion[currentDate.format(dateFormatter)] == true) {
+            streak++
+            currentDate = currentDate.minusDays(1)
+        }
+        _currentStreak.value = streak
     }
 
     fun refreshLocation() {
@@ -222,60 +317,31 @@ class PrayerViewModel @Inject constructor(
                 _cityName.value = city
                 fetchPrayerTimes(location.latitude, location.longitude)
             } catch (e: Exception) {
-                val defaultLat = 23.8103
-                val defaultLon = 90.4125
                 _cityName.value = "Default Location"
-                fetchPrayerTimes(defaultLat, defaultLon)
+                fetchPrayerTimes(23.8103, 90.4125)
             }
         }
     }
 
-    private suspend fun syncManualWithAuto() {
-        val location = localSettings.userLocation.first() ?: (23.8103 to 90.4125)
-        val autoData = prayerRepository.getPrayerTimes(location.first, location.second, LocalDate.now())
-        
-        autoData.allPrayers.forEach { prayer ->
-            if (prayer.name != "Sunrise" && prayer.name != "Sunset") {
-                localSettings.updateManualPrayerTime(prayer.name, prayer.time)
-            }
-        }
-    }
-    
     fun togglePrayerState(prayer: Prayer) {
         viewModelScope.launch {
-            val newStatus = !prayer.isPrayed
-            val currentList = _prayers.value.toMutableList()
-            val index = currentList.indexOfFirst { it.name == prayer.name }
-            if (index != -1) {
-                currentList[index] = currentList[index].copy(isPrayed = newStatus)
-                _prayers.value = currentList
-                
-                val record = prayerDao.getRecord(todayStr, prayer.name)
-                if (record != null) {
-                    prayerDao.insertRecord(record.copy(isCompleted = newStatus))
-                } else {
-                    prayerDao.insertRecord(PrayerRecord(date = todayStr, prayerName = prayer.name, isCompleted = newStatus))
-                }
-                refreshData()
-            }
+            val record = prayerDao.getRecord(todayStr, prayer.name)
+            val newStatus = if (record != null) !record.isCompleted else true
+            if (record != null) prayerDao.insertRecord(record.copy(isCompleted = newStatus))
+            else prayerDao.insertRecord(PrayerRecord(date = todayStr, prayerName = prayer.name, isCompleted = newStatus))
         }
     }
 
     fun toggleWuduStatus() {
-        viewModelScope.launch {
-            localSettings.updateWuduStatus(!wuduStatus.value)
-        }
+        viewModelScope.launch { localSettings.updateWuduStatus(!wuduStatus.value) }
     }
 
     fun updateCurrentSurah(surah: String) {
-        viewModelScope.launch {
-            localSettings.updateCurrentSurah(surah)
-        }
+        viewModelScope.launch { localSettings.updateCurrentSurah(surah) }
     }
 
     fun setManualMode(enabled: Boolean) {
         viewModelScope.launch {
-            if (enabled) syncManualWithAuto()
             localSettings.setUseManualPrayerTimes(enabled)
             refreshData()
         }
@@ -318,9 +384,16 @@ class PrayerViewModel @Inject constructor(
         }
     }
 
-    fun addFamilyMember(name: String) {
+    fun addFamilyMember(name: String, relationship: String) {
         viewModelScope.launch {
-            prayerDao.insertFamilyMember(FamilyMemberRecord(name = name, completedPrayers = 0))
+            val today = LocalDate.now().format(dateFormatter)
+            prayerDao.insertFamilyMember(
+                FamilyMemberRecord(
+                    name = name,
+                    relationship = relationship,
+                    lastActiveDate = today
+                )
+            )
         }
     }
 
@@ -338,9 +411,7 @@ class PrayerViewModel @Inject constructor(
     fun toggleAyatBookmark() { isAyatBookmarked.value = !isAyatBookmarked.value }
     fun toggleHadithBookmark() { isHadithBookmarked.value = !isHadithBookmarked.value }
     fun shareContent(content: String) {}
-    fun playAudio(text: String) {
-        println("Playing audio: $text")
-    }
+    fun playAudio(text: String) { println("Playing audio: $text") }
     fun refreshData() { 
         viewModelScope.launch {
             val location = localSettings.userLocation.first() ?: (23.8103 to 90.4125)

@@ -24,6 +24,11 @@ val SecondaryColor = Color(0xFF283593)
 val AccentColor = Color(0xFF00ACC1)
 val BackgroundColor = Color(0xFF0D1B2A)
 
+
+val GradientStart = Color(0xFF4A90E2)
+val GradientEnd = Color(0xFF9B59B6)
+
+
 // Premium Colors
 val PremiumBackgroundStart = Color(0xFF1A237E)
 val PremiumBackgroundEnd = Color(0xFF0D1B2A)
