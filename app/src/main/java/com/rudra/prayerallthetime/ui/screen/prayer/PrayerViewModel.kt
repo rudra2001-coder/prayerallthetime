@@ -49,6 +49,13 @@ class PrayerViewModel @Inject constructor(
     val wuduStatus = localSettings.wuduStatus.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val currentSurah = localSettings.currentSurah.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Al-Fatihah")
     val tahajjudTimeStr = localSettings.tahajjudTime.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "03:45 AM")
+    
+    // User location for Qibla distance calculation
+    val userLocation: StateFlow<Pair<Double, Double>?> = localSettings.userLocation.stateIn(
+        viewModelScope, 
+        SharingStarted.WhileSubscribed(5000), 
+        null
+    )
 
     // Manual vs Auto Settings
     val useManualPrayerTimes = localSettings.useManualPrayerTimes.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)

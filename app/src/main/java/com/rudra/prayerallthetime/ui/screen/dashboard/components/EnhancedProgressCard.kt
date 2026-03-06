@@ -1,20 +1,23 @@
 package com.rudra.prayerallthetime.ui.screen.dashboard.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.rudra.prayerallthetime.ui.theme.PrayerAllTheTimeTheme
+import com.rudra.prayerallthetime.ui.theme.*
 
 @Composable
 fun EnhancedProgressCard(
@@ -24,12 +27,23 @@ fun EnhancedProgressCard(
     onAnalyticsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = completionPercentage,
+        animationSpec = tween(durationMillis = 1000),
+        label = "progress"
+    )
+    
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(24.dp),
+                spotColor = ShadowDark
+            ),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        colors = CardDefaults.cardColors(containerColor = MidnightBlueCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Row(
             modifier = Modifier
@@ -43,30 +57,32 @@ fun EnhancedProgressCard(
                 modifier = Modifier.size(100.dp)
             ) {
                 CircularProgressIndicator(
-                    progress = 1f,
+                    progress = { 1f },
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f),
-                    strokeWidth = 8.dp,
-                    strokeCap = StrokeCap.Round
+                    color = MidnightBlueLight,
+                    strokeWidth = 10.dp,
+                    strokeCap = StrokeCap.Round,
                 )
                 CircularProgressIndicator(
-                    progress = completionPercentage,
+                    progress = { animatedProgress },
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 8.dp,
-                    strokeCap = StrokeCap.Round
+                    color = EmeraldGreen,
+                    strokeWidth = 10.dp,
+                    strokeCap = StrokeCap.Round,
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "${(completionPercentage * 100).toInt()}%",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        text = "${(animatedProgress * 100).toInt()}%",
+                        style = ExtendedTypography.statMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimaryDark
+                        )
                     )
                     Text(
-                        text = "Done",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        text = "Complete",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = TextSecondaryDark
+                        )
                     )
                 }
             }
@@ -77,26 +93,42 @@ fun EnhancedProgressCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Daily Progress",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimaryDark
+                    )
                 )
                 
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                StatRow("Completed", "$completed", MaterialTheme.colorScheme.primary)
-                StatRow("Remaining", "${total - completed}", Color.Gray)
-                StatRow("Total Target", "$total", MaterialTheme.colorScheme.onPrimaryContainer)
-
                 Spacer(modifier = Modifier.height(12.dp))
+                
+                StatRow("Completed", "$completed", SuccessColor)
+                Spacer(modifier = Modifier.height(4.dp))
+                StatRow("Remaining", "${total - completed}", WarningColor)
+                Spacer(modifier = Modifier.height(4.dp))
+                StatRow("Total Target", "$total", TextPrimaryDark)
 
-                TextButton(
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
                     onClick = onAnalyticsClick,
-                    contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = EmeraldGreen.copy(alpha = 0.2f),
+                        contentColor = EmeraldGreen
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Text("View Analytics", fontWeight = FontWeight.Bold)
-                    Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Text(
+                        "View Analytics", 
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward, 
+                        contentDescription = null, 
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }
@@ -107,10 +139,22 @@ fun EnhancedProgressCard(
 private fun StatRow(label: String, value: String, color: Color) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
-        Text(text = value, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = color)
+        Text(
+            text = label, 
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = TextSecondaryDark
+            )
+        )
+        Text(
+            text = value, 
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.SemiBold, 
+                color = color
+            )
+        )
     }
 }
 

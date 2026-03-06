@@ -110,7 +110,7 @@ fun ExploreScreen(navController: NavController) {
                 TopAppBar(
                     title = { 
                         Text(
-                            "Discover", 
+                            "More", 
                             style = MaterialTheme.typography.headlineMedium, 
                             fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFF0F1B4C)
@@ -118,7 +118,7 @@ fun ExploreScreen(navController: NavController) {
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
                     actions = {
-                        IconButton(onClick = { /* Handle Profile */ }) {
+                        IconButton(onClick = { navController.navigate(Screen.Profile.route) }) {
                             Icon(Icons.Default.AccountCircle, contentDescription = "Profile", tint = Color.Gray)
                         }
                     }

@@ -1,5 +1,8 @@
 package com.rudra.prayerallthetime.ui.screen.quran
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,7 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.rudra.prayerallthetime.data.local.AyahEntity
-import com.rudra.prayerallthetime.ui.theme.IslamicGold
+import com.rudra.prayerallthetime.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,38 +52,79 @@ fun SurahDetailScreen(
                 title = { 
                     Text(
                         text = ayahs.firstOrNull()?.surahName ?: "Surah Details",
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
                     ) 
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack, 
+                            contentDescription = "Back", 
+                            tint = Color.White
+                        )
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.downloadSurah(surahNumber) }) {
-                        Icon(Icons.Default.Download, contentDescription = "Download Surah", tint = IslamicGold)
+                    IconButton(
+                        onClick = { viewModel.downloadSurah(surahNumber) },
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(IslamicGold.copy(alpha = 0.15f))
+                            .padding(4.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Download, 
+                            contentDescription = "Download Surah", 
+                            tint = IslamicGold
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFF0F1B4C))
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MidnightBlue
+                )
             )
-        }
+        },
+        containerColor = MidnightBlue
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize().background(Color(0xFFF8F9FA))) {
+        Box(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+                .background(MidnightBlue)
+        ) {
             if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = IslamicGold)
+                Box(
+                    modifier = Modifier.fillMaxSize(), 
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = IslamicGold,
+                        strokeWidth = 3.dp
+                    )
+                }
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(ayahs) { ayah ->
-                        AyahItem(
-                            ayah = ayah,
-                            isPlaying = isPlaying && currentAyahPlaying == ayah.number,
-                            onPlayPauseClick = { viewModel.playAyah(ayah) }
-                        )
+                    items(
+                        items = ayahs,
+                        key = { it.ayah }
+                    ) { ayah ->
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessLow)) + 
+                                    slideInVertically()
+                        ) {
+                            AyahItem(
+                                ayah = ayah,
+                                isPlaying = isPlaying && currentAyahPlaying == ayah.number,
+                                onPlayPauseClick = { viewModel.playAyah(ayah) }
+                            )
+                        }
                     }
                     item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
@@ -98,9 +142,14 @@ fun AyahItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(24.dp), spotColor = Color.Gray.copy(alpha = 0.2f)),
+            .shadow(
+                elevation = 6.dp, 
+                shape = RoundedCornerShape(24.dp), 
+                spotColor = ShadowDark
+            ),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MidnightBlueCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(
@@ -108,25 +157,31 @@ fun AyahItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Ayah Number Badge
                 Surface(
-                    color = Color(0xFFF8F9FA),
-                    shape = RoundedCornerShape(10.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
+                    color = MidnightBlueLight,
+                    shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
                         text = "Ayah ${ayah.ayah}",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color(0xFF2C3E50)
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimaryDark
+                        )
                     )
                 }
 
+                // Play/Pause Button
                 IconButton(
                     onClick = onPlayPauseClick,
                     modifier = Modifier
-                        .size(40.dp)
-                        .background(if (isPlaying) Color(0xFF0F1B4C) else IslamicGold.copy(alpha = 0.1f), CircleShape)
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isPlaying) EmeraldGreen 
+                            else IslamicGold.copy(alpha = 0.15f)
+                        )
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
@@ -139,29 +194,31 @@ fun AyahItem(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Arabic Text
             Text(
                 text = ayah.text,
-                style = MaterialTheme.typography.headlineMedium.copy(
+                style = ExtendedTypography.arabicLarge.copy(
                     textAlign = TextAlign.Right,
                     lineHeight = 48.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimaryDark
                 ),
-                modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFF0F1B4C)
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
+            HorizontalDivider(color = MidnightBlueLight)
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Translation
             Text(
                 text = ayah.translationBn ?: "",
                 style = MaterialTheme.typography.bodyLarge.copy(
                     lineHeight = 28.sp,
-                    color = Color(0xFF2C3E50),
-                    fontWeight = FontWeight.Medium
+                    color = TextSecondaryDark,
+                    fontWeight = FontWeight.Normal
                 ),
                 modifier = Modifier.fillMaxWidth()
             )

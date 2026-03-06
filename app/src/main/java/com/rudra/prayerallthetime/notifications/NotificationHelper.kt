@@ -17,6 +17,11 @@ import java.util.TimeZone
 class NotificationHelper(private val context: Context) {
 
     private val alarmManager: AlarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    
+    // Notification settings
+    var notificationBeforeMinutes: Int = 10 // Default 10 minutes before
+    var isVibrationEnabled: Boolean = true
+    var isSoundEnabled: Boolean = true
 
     @SuppressLint("ScheduleExactAlarm")
     fun schedulePrayerNotifications(latitude: Double = 23.6556256, longitude: Double = 90.6257555) {
@@ -62,28 +67,23 @@ class NotificationHelper(private val context: Context) {
                         prayerTimeMillis = prayerCal.timeInMillis
                     }
 
-                    val intent = Intent(context, PrayerRemainderReceiver::class.java).apply {
-                        putExtra("PRAYER_NAME", name)
-                    }
-                    val pendingIntent = PendingIntent.getBroadcast(
-                        context,
-                        name.hashCode(),
-                        intent,
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    // Schedule main prayer notification
+                    scheduleNotification(
+                        prayerName = name,
+                        timeMillis = prayerTimeMillis,
+                        isReminder = false
                     )
-
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        alarmManager.setExactAndAllowWhileIdle(
-                            AlarmManager.RTC_WAKEUP,
-                            prayerTimeMillis,
-                            pendingIntent
-                        )
-                    } else {
-                        alarmManager.setExact(
-                            AlarmManager.RTC_WAKEUP,
-                            prayerTimeMillis,
-                            pendingIntent
-                        )
+                    
+                    // Schedule reminder before prayer (if enabled)
+                    if (notificationBeforeMinutes > 0) {
+                        val reminderTimeMillis = prayerTimeMillis - (notificationBeforeMinutes * 60 * 1000)
+                        if (reminderTimeMillis > now) {
+                            scheduleNotification(
+                                prayerName = name,
+                                timeMillis = reminderTimeMillis,
+                                isReminder = true
+                            )
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -91,18 +91,72 @@ class NotificationHelper(private val context: Context) {
             }
         }
     }
+    
+    @SuppressLint("ScheduleExactAlarm")
+    private fun scheduleNotification(
+        prayerName: String,
+        timeMillis: Long,
+        isReminder: Boolean
+    ) {
+        val intent = Intent(context, PrayerRemainderReceiver::class.java).apply {
+            putExtra("PRAYER_NAME", prayerName)
+            putExtra("IS_REMINDER", isReminder)
+            putExtra("VIBRATION_ENABLED", isVibrationEnabled)
+            putExtra("SOUND_ENABLED", isSoundEnabled)
+        }
+        
+        val requestCode = if (isReminder) {
+            "${prayerName}_reminder".hashCode()
+        } else {
+            prayerName.hashCode()
+        }
+        
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                timeMillis,
+                pendingIntent
+            )
+        } else {
+            alarmManager.setExact(
+                AlarmManager.RTC_WAKEUP,
+                timeMillis,
+                pendingIntent
+            )
+        }
+    }
 
     fun cancelAllNotifications() {
         val prayers = listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha")
         prayers.forEach { name ->
-            val intent = Intent(context, PrayerRemainderReceiver::class.java)
-            val pendingIntent = PendingIntent.getBroadcast(
-                context,
-                name.hashCode(),
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            alarmManager.cancel(pendingIntent)
+            // Cancel main notification
+            cancelNotification(name.hashCode())
+            // Cancel reminder notification
+            cancelNotification("${name}_reminder".hashCode())
         }
+    }
+    
+    private fun cancelNotification(requestCode: Int) {
+        val intent = Intent(context, PrayerRemainderReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
+    }
+    
+    fun updateNotificationSettings(beforeMinutes: Int, vibration: Boolean, sound: Boolean) {
+        notificationBeforeMinutes = beforeMinutes
+        isVibrationEnabled = vibration
+        isSoundEnabled = sound
     }
 }

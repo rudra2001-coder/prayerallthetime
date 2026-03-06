@@ -11,9 +11,10 @@ sealed class Screen(
     val emoji: String? = null
 ) {
     object Dashboard : Screen("dashboard", "Home", Icons.Default.Home, "🏠")
-    object Explore : Screen("explore", "Explore", Icons.Default.Explore, "🧭")
-    object Prayers : Screen("prayers", "Prayers", Icons.Default.Mosque, "🕋")
+    object Explore : Screen("explore", "More", Icons.Default.MoreHoriz, "⚙️")
+    object Prayers : Screen("prayers", "Prayer", Icons.Default.Mosque, "🕋")
     object QuranHadith : Screen("quran_hadith", "Quran", Icons.Default.MenuBook, "📖")
+    object Community : Screen("community", "Community", Icons.Default.Groups, "👥")
     object Hadith : Screen("hadith", "Hadith", Icons.Default.MenuBook, "📜")
     object Analytics : Screen("analytics", "Stats", Icons.Default.BarChart, "📊")
     object Settings : Screen("settings", "Settings", Icons.Default.Settings, "⚙️")
@@ -52,7 +53,8 @@ sealed class Screen(
 
 
     companion object {
-        val bottomNavItems = listOf(Dashboard, Explore, QuranHadith, Analytics)
+        // 5 main tabs as requested: Home, Quran, Prayer, Community, More
+        val bottomNavItems = listOf(Dashboard, QuranHadith, Prayers, Community, Explore).filterNotNull()
         
         fun allScreens() = listOf(
             Dashboard, Explore, Prayers, QuranHadith, Hadith, Analytics, Settings,
@@ -61,6 +63,6 @@ sealed class Screen(
             Streaks, Charts, StreakDetails, RamadanTimer, Taraweeh,
             FamilyMember, PrayerTimes, Report, Habits, Duas, NearbyMosques,
             SurahList, SurahDetail
-        )
+        ).filterNotNull()
     }
 }

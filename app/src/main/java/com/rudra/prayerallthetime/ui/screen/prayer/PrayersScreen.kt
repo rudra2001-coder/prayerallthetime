@@ -1,8 +1,13 @@
 package com.rudra.prayerallthetime.ui.screen.prayer
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -25,7 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.rudra.prayerallthetime.data.Prayer
-import com.rudra.prayerallthetime.ui.theme.IslamicGold
+import com.rudra.prayerallthetime.ui.theme.*
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,18 +60,37 @@ fun PrayersScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Prayer Times", fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = Color.White)
-                        Text(cityName, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.8f))
+                        Text(
+                            "Prayer Times", 
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold, 
+                                color = Color.White
+                            )
+                        )
+                        Text(
+                            cityName, 
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = TextSecondaryDark
+                            )
+                        )
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack, 
+                            contentDescription = "Back", 
+                            tint = Color.White
+                        )
                     }
                 },
                 actions = {
                     IconButton(onClick = { prayerViewModel.refreshLocation() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color.White)
+                        Icon(
+                            Icons.Default.Refresh, 
+                            contentDescription = "Refresh", 
+                            tint = Color.White
+                        )
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     Switch(
@@ -73,24 +98,32 @@ fun PrayersScreen(
                         onCheckedChange = { prayerViewModel.setManualMode(it) },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = IslamicGold,
-                            checkedTrackColor = Color.White.copy(alpha = 0.5f),
-                            uncheckedThumbColor = Color.LightGray,
-                            uncheckedTrackColor = Color.White.copy(alpha = 0.5f)
+                            checkedTrackColor = IslamicGold.copy(alpha = 0.5f),
+                            uncheckedThumbColor = TextSecondaryDark,
+                            uncheckedTrackColor = MidnightBlueLight
                         ),
                         thumbContent = {
-                            Icon(if (useManual) Icons.Default.Edit else Icons.Default.Cloud, null, tint = Color(0xFF0F1B4C))
+                            Icon(
+                                if (useManual) Icons.Default.Edit else Icons.Default.Cloud, 
+                                null, 
+                                tint = MidnightBlue,
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     )
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFF0F1B4C))
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MidnightBlue
+                )
             )
-        }
+        },
+        containerColor = MidnightBlue
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Brush.verticalGradient(listOf(Color(0xFFF8F9FA), Color.White)))
+                .background(MidnightBlue)
         ) {
             Column {
                 AnimatedVisibility(visible = useManual) {
@@ -99,12 +132,22 @@ fun PrayersScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.EditCalendar, contentDescription = null, tint = IslamicGold)
+                            Icon(
+                                Icons.Default.EditCalendar, 
+                                contentDescription = null, 
+                                tint = IslamicGold,
+                                modifier = Modifier.size(20.dp)
+                            )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text("Manual Mode: Tap a prayer time to customize your schedule.", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            Text(
+                                "Manual Mode: Tap a prayer time to customize your schedule.", 
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = TextSecondaryDark
+                                )
+                            )
                         }
                     }
                 }
@@ -117,17 +160,22 @@ fun PrayersScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(prayers) { prayer ->
+                        items(prayers, key = { it.name }) { prayer ->
                             val isNext = prayer.name == nextPrayerName
-                            PremiumPrayerCard(
-                                prayer = prayer,
-                                isNext = isNext,
-                                isEditable = useManual && prayer.name != "Sunrise",
-                                onEditTime = { showTimePicker = prayer.name },
-                                onToggle = { prayerViewModel.togglePrayerState(it) }
-                            )
+                            AnimatedVisibility(
+                                visible = true,
+                                enter = fadeIn() + slideInVertically()
+                            ) {
+                                PremiumPrayerCard(
+                                    prayer = prayer,
+                                    isNext = isNext,
+                                    isEditable = useManual && prayer.name != "Sunrise",
+                                    onEditTime = { showTimePicker = prayer.name },
+                                    onToggle = { prayerViewModel.togglePrayerState(it) }
+                                )
+                            }
                         }
                         item { Spacer(modifier = Modifier.height(24.dp)) }
                     }
@@ -168,59 +216,118 @@ fun PremiumPrayerCard(
     onEditTime: () -> Unit,
     onToggle: (Prayer) -> Unit
 ) {
-    val cardBrush = if (isNext) Brush.linearGradient(listOf(IslamicGold, Color(0xFFFFD93D))) else Brush.linearGradient(listOf(Color.White, Color.White))
-    val contentColor = if (isNext) Color.White else Color(0xFF2C3E50)
+    val prayerColor = getPrayerColor(prayer.name)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "scale"
+    )
+    
+    val cardBackground = if (isNext) {
+        Brush.linearGradient(
+            colors = listOf(IslamicGold, IslamicGoldDark),
+            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+            end = androidx.compose.ui.geometry.Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+        )
+    } else {
+        Brush.linearGradient(listOf(MidnightBlueCard, MidnightBlueLight))
+    }
+    
+    val contentColor = if (isNext) Color.White else TextPrimaryDark
+    val secondaryContentColor = if (isNext) Color.White.copy(alpha = 0.8f) else TextSecondaryDark
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(if (isNext) 12.dp else 4.dp, RoundedCornerShape(24.dp), spotColor = if (isNext) IslamicGold else Color.Gray)
-            .clip(RoundedCornerShape(24.dp))
-            .clickable(enabled = isEditable, onClick = onEditTime),
-        shape = RoundedCornerShape(24.dp),
+            .scale(scale)
+            .shadow(
+                elevation = if (isNext) 12.dp else 6.dp, 
+                shape = RoundedCornerShape(20.dp), 
+                spotColor = if (isNext) IslamicGold else ShadowDark
+            )
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = isEditable, 
+                onClick = onEditTime
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Row(
-            modifier = Modifier.background(cardBrush).padding(20.dp).fillMaxWidth(),
+            modifier = Modifier
+                .background(cardBackground)
+                .padding(20.dp)
+                .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(if (isNext) Color.White.copy(alpha = 0.2f) else IslamicGold.copy(alpha = 0.1f), CircleShape),
+                        .size(52.dp)
+                        .background(
+                            if (isNext) Color.White.copy(alpha = 0.2f) 
+                            else prayerColor.copy(alpha = 0.15f), 
+                            CircleShape
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         prayerIcon(prayer.name),
                         contentDescription = prayer.name,
-                        tint = if (isNext) Color.White else IslamicGold,
-                        modifier = Modifier.size(24.dp)
+                        tint = if (isNext) Color.White else prayerColor,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
-                    Text(prayer.name, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = contentColor)
+                    Text(
+                        prayer.name, 
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = contentColor
+                        )
+                    )
                     if (isNext) {
-                        Text("Next Prayer", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.9f))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.White.copy(alpha = 0.2f)
+                        ) {
+                            Text(
+                                "Next Prayer", 
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                ),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
                     }
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically, 
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 Text(
                     text = prayer.time,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Black,
-                    color = contentColor
+                    style = ExtendedTypography.prayerTime.copy(
+                        color = contentColor
+                    )
                 )
                 if (prayer.name != "Sunrise") {
                     Checkbox(
                         checked = prayer.isPrayed,
                         onCheckedChange = { onToggle(prayer) },
                         colors = CheckboxDefaults.colors(
-                            checkedColor = if (isNext) Color.White else IslamicGold,
-                            uncheckedColor = if (isNext) Color.White.copy(alpha = 0.7f) else IslamicGold.copy(alpha = 0.7f),
+                            checkedColor = if (isNext) Color.White else SuccessColor,
+                            uncheckedColor = if (isNext) Color.White.copy(alpha = 0.7f) else TextTertiaryDark,
                             checkmarkColor = if (isNext) IslamicGold else Color.White
                         )
                     )
@@ -242,33 +349,37 @@ fun ManualTimePickerDialog(
     AlertDialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(24.dp),
-            color = Color.White,
+            color = MidnightBlueCard,
             tonalElevation = 8.dp
         ) {
-            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                modifier = Modifier.padding(24.dp), 
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
                     "Set Time for $prayerName", 
-                    style = MaterialTheme.typography.titleLarge, 
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2C3E50)
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimaryDark
+                    )
                 )
                 Spacer(Modifier.height(24.dp))
                 TimePicker(
                     state = timePickerState,
                     colors = TimePickerDefaults.colors(
-                        clockDialColor = Color(0xFFF8F9FA),
+                        clockDialColor = MidnightBlueLight,
                         clockDialSelectedContentColor = Color.White,
-                        clockDialUnselectedContentColor = Color(0xFF2C3E50),
+                        clockDialUnselectedContentColor = TextPrimaryDark,
                         selectorColor = IslamicGold,
                         periodSelectorBorderColor = IslamicGold,
                         periodSelectorSelectedContainerColor = IslamicGold,
-                        periodSelectorUnselectedContainerColor = Color.White,
+                        periodSelectorUnselectedContainerColor = MidnightBlueLight,
                         periodSelectorSelectedContentColor = Color.White,
-                        periodSelectorUnselectedContentColor = Color(0xFF2C3E50),
+                        periodSelectorUnselectedContentColor = TextPrimaryDark,
                         timeSelectorSelectedContainerColor = IslamicGold.copy(alpha = 0.2f),
-                        timeSelectorUnselectedContainerColor = Color(0xFFF8F9FA),
+                        timeSelectorUnselectedContainerColor = MidnightBlueLight,
                         timeSelectorSelectedContentColor = IslamicGold,
-                        timeSelectorUnselectedContentColor = Color(0xFF2C3E50)
+                        timeSelectorUnselectedContentColor = TextPrimaryDark
                     )
                 )
                 Spacer(Modifier.height(24.dp))
@@ -278,7 +389,10 @@ fun ManualTimePickerDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel", color = Color.Gray)
+                        Text(
+                            "Cancel", 
+                            color = TextSecondaryDark
+                        )
                     }
                     Spacer(Modifier.width(8.dp))
                     Button(
@@ -289,8 +403,14 @@ fun ManualTimePickerDialog(
                             val formatter = java.text.SimpleDateFormat("hh:mm a", Locale.getDefault())
                             onTimeSelected(formatter.format(cal.time))
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = IslamicGold)
-                    ) { Text("Confirm") }
+                        colors = ButtonDefaults.buttonColors(containerColor = IslamicGold),
+                        shape = RoundedCornerShape(12.dp)
+                    ) { 
+                        Text(
+                            "Confirm",
+                            fontWeight = FontWeight.SemiBold
+                        ) 
+                    }
                 }
             }
         }

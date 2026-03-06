@@ -1,5 +1,8 @@
 package com.rudra.prayerallthetime.ui.screen.wuduguide
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,18 +16,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.rudra.prayerallthetime.ui.theme.IslamicGold
+import com.rudra.prayerallthetime.ui.theme.*
 
 data class WuduStep(
     val title: String,
     val description: String,
-    val imageResId: Int? = null // Placeholder for images
+    val imageResId: Int? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,25 +51,34 @@ fun WuduGuideScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Wudu Guide", fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        "Wudu Guide",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MidnightBlue)
             )
-        }
+        },
+        containerColor = MidnightBlue
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color(0xFFF0F4FF), Color.White)
-                    )
-                )
+                .background(MidnightBlue)
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -73,31 +86,50 @@ fun WuduGuideScreen(navController: NavController) {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 itemsIndexed(steps) { index, step ->
-                    WuduStepCard(index + 1, step)
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessLow)) + 
+                                slideInVertically()
+                    ) {
+                        WuduStepCard(index + 1, step)
+                    }
                 }
                 
                 item {
                     Spacer(modifier = Modifier.height(32.dp))
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(
+                                elevation = 6.dp,
+                                shape = RoundedCornerShape(20.dp),
+                                spotColor = ShadowDark
+                            ),
                         shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = IslamicGold.copy(alpha = 0.1f))
+                        colors = CardDefaults.cardColors(
+                            containerColor = IslamicGold.copy(alpha = 0.1f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column(modifier = Modifier.padding(20.dp)) {
                             Text(
                                 text = "Important Note",
-                                fontWeight = FontWeight.Bold,
-                                color = IslamicGold,
-                                fontSize = 16.sp
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = IslamicGold
+                                )
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text = "Ensure that water touches every part of the required areas. If any part remains dry, the Wudu is incomplete.",
-                                fontSize = 14.sp,
-                                color = Color(0xFF2C3E50)
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = TextSecondaryDark,
+                                    lineHeight = 24.sp
+                                )
                             )
                         }
                     }
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }
@@ -107,22 +139,28 @@ fun WuduGuideScreen(navController: NavController) {
 @Composable
 fun WuduStepCard(number: Int, step: WuduStep) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(20.dp),
+                spotColor = ShadowDark
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MidnightBlueCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(20.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
-                    .background(IslamicGold),
+                    .background(CharityColor),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -138,16 +176,18 @@ fun WuduStepCard(number: Int, step: WuduStep) {
             Column {
                 Text(
                     text = step.title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color(0xFF2C3E50)
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimaryDark
+                    )
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = step.description,
-                    fontSize = 14.sp,
-                    color = Color.Gray,
-                    lineHeight = 20.sp
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = TextSecondaryDark,
+                        lineHeight = 24.sp
+                    )
                 )
             }
         }

@@ -3,6 +3,7 @@ package com.rudra.prayerallthetime.ui.screen.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -13,13 +14,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.rudra.prayerallthetime.ui.navigation.Screen
-import com.rudra.prayerallthetime.ui.theme.IslamicGold
+import com.rudra.prayerallthetime.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,19 +39,28 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings", fontWeight = FontWeight.Bold) },
+                title = { 
+                    Text(
+                        "Settings",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
+                            tint = Color.White
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MidnightBlue)
             )
         },
-        containerColor = Color(0xFFF8F9FA)
+        containerColor = MidnightBlue
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -63,11 +74,15 @@ fun SettingsScreen(
                 title = "Notifications",
                 subtitle = "Enable prayer reminders",
                 icon = Icons.Default.Notifications,
+                iconColor = InfoColor,
                 trailing = {
                     Switch(
                         checked = notificationsEnabled,
                         onCheckedChange = { settingsViewModel.toggleNotifications(it) },
-                        colors = SwitchDefaults.colors(checkedThumbColor = IslamicGold, checkedTrackColor = IslamicGold.copy(alpha = 0.5f))
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = IslamicGold,
+                            checkedTrackColor = IslamicGold.copy(alpha = 0.5f)
+                        )
                     )
                 }
             )
@@ -76,11 +91,15 @@ fun SettingsScreen(
                 title = "Dark Mode",
                 subtitle = "Use Midnight Blue theme",
                 icon = Icons.Default.DarkMode,
+                iconColor = RamadanPurple,
                 trailing = {
                     Switch(
                         checked = darkModeEnabled,
                         onCheckedChange = { settingsViewModel.toggleDarkMode(it) },
-                        colors = SwitchDefaults.colors(checkedThumbColor = IslamicGold, checkedTrackColor = IslamicGold.copy(alpha = 0.5f))
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = IslamicGold,
+                            checkedTrackColor = IslamicGold.copy(alpha = 0.5f)
+                        )
                     )
                 }
             )
@@ -91,11 +110,15 @@ fun SettingsScreen(
                 title = "Automatic Location",
                 subtitle = "Update prayer times based on GPS",
                 icon = Icons.Default.LocationOn,
+                iconColor = SuccessColor,
                 trailing = {
                     Switch(
                         checked = locationEnabled,
                         onCheckedChange = { settingsViewModel.toggleLocation(it) },
-                        colors = SwitchDefaults.colors(checkedThumbColor = IslamicGold, checkedTrackColor = IslamicGold.copy(alpha = 0.5f))
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = IslamicGold,
+                            checkedTrackColor = IslamicGold.copy(alpha = 0.5f)
+                        )
                     )
                 }
             )
@@ -104,6 +127,7 @@ fun SettingsScreen(
                 title = "Refresh Prayer Times",
                 subtitle = "Force-sync with the server",
                 icon = Icons.Default.Sync,
+                iconColor = EmeraldGreen,
                 onClick = {
                     navController.previousBackStackEntry?.savedStateHandle?.set("refresh_prayer_times", true)
                     navController.navigateUp()
@@ -121,7 +145,10 @@ fun SettingsScreen(
                     Switch(
                         checked = premiumEnabled,
                         onCheckedChange = { settingsViewModel.togglePremium(it) },
-                        colors = SwitchDefaults.colors(checkedThumbColor = IslamicGold, checkedTrackColor = IslamicGold.copy(alpha = 0.5f))
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = IslamicGold,
+                            checkedTrackColor = IslamicGold.copy(alpha = 0.5f)
+                        )
                     )
                 }
             )
@@ -130,16 +157,17 @@ fun SettingsScreen(
                 title = "About App",
                 subtitle = "Version 1.0.0",
                 icon = Icons.Default.Info,
+                iconColor = TextSecondaryDark,
                 onClick = { /* Navigate to About */ }
             )
 
-            SettingsCategoryHeader("Danger Zone", Color.Red)
+            SettingsCategoryHeader("Danger Zone", ErrorColor)
 
             SettingsItem(
                 title = "Reset Full App",
                 subtitle = "Clear all prayer records, streaks, and settings",
                 icon = Icons.Default.DeleteForever,
-                iconColor = Color.Red,
+                iconColor = ErrorColor,
                 onClick = { showResetDialog = true }
             )
 
@@ -150,8 +178,19 @@ fun SettingsScreen(
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
-            title = { Text("Confirm Full Reset") },
-            text = { Text("This will permanently delete all your prayer records, habits, and settings. This action cannot be undone.") },
+            title = { 
+                Text(
+                    "Confirm Full Reset",
+                    color = ErrorColor,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = { 
+                Text(
+                    "This will permanently delete all your prayer records, habits, and settings. This action cannot be undone.",
+                    color = TextSecondaryDark
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -162,27 +201,30 @@ fun SettingsScreen(
                             }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                    colors = ButtonDefaults.buttonColors(containerColor = ErrorColor),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Reset Everything")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showResetDialog = false }) {
-                    Text("Cancel")
+                    Text("Cancel", color = TextSecondaryDark)
                 }
-            }
+            },
+            containerColor = MidnightBlueCard
         )
     }
 }
 
 @Composable
-fun SettingsCategoryHeader(title: String, color: Color = Color(0xFF0F1B4C)) {
+fun SettingsCategoryHeader(title: String, color: Color = EmeraldGreen) {
     Text(
         text = title,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.Bold,
-        color = color,
+        style = MaterialTheme.typography.labelLarge.copy(
+            fontWeight = FontWeight.Bold,
+            color = color
+        ),
         modifier = Modifier.padding(start = 24.dp, top = 24.dp, bottom = 8.dp)
     )
 }
@@ -191,8 +233,8 @@ fun SettingsCategoryHeader(title: String, color: Color = Color(0xFF0F1B4C)) {
 fun SettingsItem(
     title: String,
     subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconColor: Color = Color(0xFF0F1B4C),
+    icon: ImageVector,
+    iconColor: Color = EmeraldGreen,
     trailing: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)? = null
 ) {
@@ -202,21 +244,41 @@ fun SettingsItem(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(16.dp)),
-        color = Color.White,
+        color = MidnightBlueCard,
         tonalElevation = 0.dp
     ) {
         ListItem(
-            headlineContent = { Text(title, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50)) },
-            supportingContent = { Text(subtitle, color = Color.Gray, fontSize = 12.sp) },
+            headlineContent = { 
+                Text(
+                    title,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimaryDark
+                    )
+                )
+            },
+            supportingContent = { 
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = TextSecondaryDark
+                    )
+                )
+            },
             leadingContent = { 
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(iconColor.copy(alpha = 0.1f)),
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(iconColor.copy(alpha = 0.15f)),
                     contentAlignment = androidx.compose.ui.Alignment.Center
                 ) {
-                    Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp))
+                    Icon(
+                        icon, 
+                        contentDescription = null, 
+                        tint = iconColor, 
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             },
             trailingContent = trailing,

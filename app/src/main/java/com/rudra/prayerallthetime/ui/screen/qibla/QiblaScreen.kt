@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -39,10 +40,35 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.rudra.prayerallthetime.ui.screen.prayer.PrayerViewModel
-import com.rudra.prayerallthetime.ui.theme.IslamicGold
+import com.rudra.prayerallthetime.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.acos
+import kotlin.math.asin
+import kotlin.math.sqrt
+import kotlin.math.tan
+
+// Calculate distance to Mecca using Haversine formula
+private fun calculateDistanceToMecca(latitude: Double, longitude: Double): String {
+    val meccaLat = 21.4225
+    val meccaLon = 39.8262
+    
+    val earthRadius = 6371.0 // km
+    
+    val lat1 = Math.toRadians(latitude)
+    val lat2 = Math.toRadians(meccaLat)
+    val dLat = Math.toRadians(meccaLat - latitude)
+    val dLon = Math.toRadians(meccaLon - longitude)
+    
+    val a = sin(dLat / 2) * sin(dLat / 2) +
+            cos(lat1) * cos(lat2) *
+            sin(dLon / 2) * sin(dLon / 2)
+    val c = 2 * asin(sqrt(a))
+    
+    val distance = earthRadius * c
+    return "${distance.toInt()} km"
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +78,14 @@ fun QiblaScreen(navController: NavController, prayerViewModel: PrayerViewModel) 
     var currentAzimuth by remember { mutableStateOf(0f) }
     var sensorAccuracy by remember { mutableStateOf(SensorManager.SENSOR_STATUS_ACCURACY_LOW) }
     var isLoading by remember { mutableStateOf(true) }
+    
+    // Get user location for distance calculation
+    val userLocation by prayerViewModel.userLocation.collectAsState()
+    val distanceToMecca = remember(userLocation) {
+        userLocation?.let { (lat, lon) ->
+            calculateDistanceToMecca(lat, lon)
+        } ?: "Calculating..."
+    }
 
     val angleToQibla = remember(qiblaDirection, currentAzimuth) {
         ((qiblaDirection - currentAzimuth) % 360 + 360) % 360
@@ -113,34 +147,57 @@ fun QiblaScreen(navController: NavController, prayerViewModel: PrayerViewModel) 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Qibla Finder", fontWeight = FontWeight.Bold, color = Color.White) },
+                title = {
+                    Text(
+                        "Qibla Finder",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
                     }
                 },
                 actions = {
-                    IconButton(onClick = { prayerViewModel.refreshLocation() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh Location", tint = IslamicGold)
+                    IconButton(
+                        onClick = { prayerViewModel.refreshLocation() },
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(IslamicGold.copy(alpha = 0.15f))
+                            .padding(4.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Refresh Location",
+                            tint = IslamicGold
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0F1B4C))
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MidnightBlue)
             )
         },
-        containerColor = Color(0xFFF8F9FA)
+        containerColor = MidnightBlue
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(16.dp)
+                .background(MidnightBlue),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             if (isLoading) {
                 LoadingView()
             } else {
-                QiblaInfo(angleToQibla, qiblaDirection)
+                QiblaInfo(angleToQibla, qiblaDirection, distanceToMecca)
                 
                 CompassWidget(smoothAzimuth, qiblaDirection)
                 
@@ -152,29 +209,98 @@ fun QiblaScreen(navController: NavController, prayerViewModel: PrayerViewModel) 
 
 @Composable
 fun LoadingView() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            CircularProgressIndicator(color = IslamicGold)
-            Text("Calibrating Compass...", fontWeight = FontWeight.Medium)
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CircularProgressIndicator(
+                color = IslamicGold,
+                strokeWidth = 3.dp
+            )
+            Text(
+                "Calibrating Compass...",
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = TextSecondaryDark
+                )
+            )
         }
     }
 }
 
 @Composable
-fun QiblaInfo(angleToQibla: Float, qiblaDirection: Float) {
+fun QiblaInfo(angleToQibla: Float, qiblaDirection: Float, distanceToMecca: String = "Calculating...") {
+    val isAligned = angleToQibla.toInt() in 358..360 || angleToQibla.toInt() in 0..2
+    
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Align your phone", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+        // Distance to Mecca
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = IslamicGold.copy(alpha = 0.15f)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Place,
+                    contentDescription = null,
+                    tint = IslamicGold,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Distance to Kaaba: $distanceToMecca",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = IslamicGold,
+                        fontWeight = FontWeight.Medium
+                    )
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            "Align your phone",
+            style = MaterialTheme.typography.bodyLarge.copy(
+                color = TextSecondaryDark
+            )
+        )
         Text(
             text = "${angleToQibla.toInt()}°",
-            fontSize = 52.sp,
-            fontWeight = FontWeight.Black,
-            color = if (angleToQibla.toInt() in 358..360 || angleToQibla.toInt() in 0..2) Color(0xFF4CAF50) else IslamicGold
+            style = ExtendedTypography.statLarge.copy(
+                fontWeight = FontWeight.Black,
+                color = if (isAligned) SuccessColor else IslamicGold
+            )
         )
         Text(
             text = "towards the Qibla",
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.Gray
+            style = MaterialTheme.typography.bodyLarge.copy(
+                color = TextSecondaryDark
+            )
         )
+        
+        if (isAligned) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = SuccessColor.copy(alpha = 0.15f)
+            ) {
+                Text(
+                    "Perfectly Aligned!",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        color = SuccessColor,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+        }
     }
 }
 
@@ -191,139 +317,168 @@ fun CompassWidget(rotation: Float, qiblaAngle: Float) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color.White, Color(0xFFE0E0E0)),
+                    colors = listOf(MidnightBlueCard, MidnightBlueLight),
                     radius = size.minDimension / 2
                 ),
                 style = Stroke(width = 8.dp.toPx())
             )
             
             // Draw cardinal points (static)
-            val labels = listOf("N", "E", "S", "W")
-            for (i in labels.indices) {
-                val angle = i * 90.0
-                val rad = Math.toRadians(angle - 90.0)
-                val x = (size.width / 2) + (size.width / 2 - 40.dp.toPx()) * cos(rad).toFloat()
-                val y = (size.height / 2) + (size.height / 2 - 40.dp.toPx()) * sin(rad).toFloat()
-                // drawing simple markers instead of text for performance in Canvas
-                drawCircle(
-                    color = if (i == 0) Color.Red else Color.LightGray,
-                    radius = 4.dp.toPx(),
-                    center = Offset(x, y)
-                )
-            }
-        }
-
-        // Compass dial that rotates with phone
-        Canvas(modifier = Modifier
-            .fillMaxSize(0.85f)
-            .rotate(rotation)) {
+            val radius = size.minDimension / 2 - 20.dp.toPx()
             val centerX = size.width / 2
             val centerY = size.height / 2
-            val radius = size.minDimension / 2
-
-            // Draw Compass Plate
-            drawCircle(
-                color = Color.White,
-                radius = radius,
-                style = Stroke(width = 2.dp.toPx())
+            
+            // North
+            drawLine(
+                color = ErrorColor,
+                start = Offset(centerX, centerY - radius + 10.dp.toPx()),
+                end = Offset(centerX, centerY - radius + 30.dp.toPx()),
+                strokeWidth = 3.dp.toPx()
             )
-
-            // Ticks
-            for (i in 0 until 360 step 10) {
-                val tickLength = if (i % 90 == 0) 15.dp.toPx() else 8.dp.toPx()
-                val strokeWidth = if (i % 90 == 0) 3.dp.toPx() else 1.dp.toPx()
-                val color = if (i == 0) Color.Red else Color.LightGray
-                
-                rotate(i.toFloat()) {
+            
+            // Other cardinal points
+            listOf(90f, 180f, 270f).forEach { angle ->
+                rotate(angle, Offset(centerX, centerY)) {
                     drawLine(
-                        color = color,
-                        start = Offset(centerX, 0f),
-                        end = Offset(centerX, tickLength),
-                        strokeWidth = strokeWidth,
-                        cap = StrokeCap.Round
+                        color = TextTertiaryDark,
+                        start = Offset(centerX, centerY - radius + 10.dp.toPx()),
+                        end = Offset(centerX, centerY - radius + 20.dp.toPx()),
+                        strokeWidth = 2.dp.toPx()
                     )
                 }
             }
-            
-            // North indicator
-            val path = Path().apply {
-                moveTo(centerX, 10.dp.toPx())
-                lineTo(centerX - 8.dp.toPx(), 30.dp.toPx())
-                lineTo(centerX + 8.dp.toPx(), 30.dp.toPx())
-                close()
-            }
-            drawPath(path, Color.Red)
-        }
-
-        // Qibla needle (rotates independently of compass dial to point to Qibla)
-        Canvas(modifier = Modifier
-            .fillMaxSize(0.95f)
-            .rotate(rotation + qiblaAngle)) {
-            val centerX = size.width / 2
-            val centerY = size.height / 2
-            
-            // Kaaba Direction Marker
-            val needlePath = Path().apply {
-                moveTo(centerX, 0f) // Tip
-                lineTo(centerX - 15.dp.toPx(), 40.dp.toPx())
-                lineTo(centerX + 15.dp.toPx(), 40.dp.toPx())
-                close()
-            }
-            drawPath(needlePath, IslamicGold)
-            
-            // Kaaba Icon Placeholder (Square)
-            drawRect(
-                color = Color(0xFF212121),
-                topLeft = Offset(centerX - 12.dp.toPx(), 5.dp.toPx()),
-                size = Size(24.dp.toPx(), 24.dp.toPx())
-            )
-            // Gold line on Kaaba
-            drawRect(
-                color = IslamicGold,
-                topLeft = Offset(centerX - 12.dp.toPx(), 12.dp.toPx()),
-                size = Size(24.dp.toPx(), 4.dp.toPx())
-            )
         }
         
-        // Center centerpiece
+        // Rotating Compass Rose
         Box(
             modifier = Modifier
-                .size(16.dp)
+                .fillMaxSize(0.85f)
+                .rotate(rotation)
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val centerX = size.width / 2
+                val centerY = size.height / 2
+                
+                // Draw N
+                drawLine(
+                    color = IslamicGold,
+                    start = Offset(centerX, centerY),
+                    end = Offset(centerX, 20.dp.toPx()),
+                    strokeWidth = 4.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+                
+                // Draw tick marks
+                for (i in 0 until 360 step 30) {
+                    rotate(i.toFloat(), Offset(centerX, centerY)) {
+                        drawLine(
+                            color = TextSecondaryDark,
+                            start = Offset(centerX, 10.dp.toPx()),
+                            end = Offset(centerX, 20.dp.toPx()),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Static Qibla Indicator
+        QiblaArrow(qiblaAngle)
+        
+        // Center point
+        Box(
+            modifier = Modifier
+                .size(20.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF0F1B4C))
-                .border(2.dp, Color.White, CircleShape)
+                .background(IslamicGold)
+                .border(4.dp, MidnightBlue, CircleShape)
         )
     }
 }
 
 @Composable
-fun AccuracyIndicator(accuracy: Int) {
-    val (text, color) = when (accuracy) {
-        SensorManager.SENSOR_STATUS_ACCURACY_HIGH -> "Accuracy: High" to Color(0xFF4CAF50)
-        SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM -> "Accuracy: Medium" to IslamicGold
-        else -> "Accuracy: Low - Please Calibrate" to Color.Red
-    }
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        color = Color.White,
-        shadowElevation = 2.dp
+fun QiblaArrow(qiblaAngle: Float) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
-        Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
-                Text(text, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50), fontSize = 14.sp)
-            }
-            if (accuracy < SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Move your phone in a figure-8 motion to improve precision.",
-                    fontSize = 12.sp, 
-                    color = Color.Gray, 
-                    textAlign = TextAlign.Center
+        Canvas(modifier = Modifier.fillMaxSize(0.9f)) {
+            val centerX = size.width / 2
+            val centerY = size.height / 2
+            val radius = size.minDimension / 2 - 10.dp.toPx()
+            
+            // Calculate Qibla position on circle
+            val angleRad = Math.toRadians((qiblaAngle - 90).toDouble())
+            val arrowX = centerX + (radius * cos(angleRad)).toFloat()
+            val arrowY = centerY + (radius * sin(angleRad)).toFloat()
+            
+            // Draw arrow to Qibla
+            drawLine(
+                color = SuccessColor,
+                start = Offset(centerX, centerY),
+                end = Offset(arrowX, arrowY),
+                strokeWidth = 4.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+            
+            // Draw arrow head
+            drawCircle(
+                color = SuccessColor,
+                radius = 8.dp.toPx(),
+                center = Offset(arrowX, arrowY)
+            )
+        }
+        
+        // Kaaba icon at top
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset(y = 16.dp)
+                .clip(CircleShape)
+                .background(IslamicGold.copy(alpha = 0.2f))
+                .padding(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Navigation,
+                contentDescription = "Qibla Direction",
+                tint = IslamicGold,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun AccuracyIndicator(accuracy: Int) {
+    val (color, text) = when (accuracy) {
+        SensorManager.SENSOR_STATUS_ACCURACY_HIGH -> SuccessColor to "High Accuracy"
+        SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM -> WarningColor to "Medium Accuracy"
+        SensorManager.SENSOR_STATUS_ACCURACY_LOW -> TextTertiaryDark to "Low Accuracy"
+        else -> TextTertiaryDark to "Calibrating..."
+    }
+    
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = color.copy(alpha = 0.15f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(color)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    color = color,
+                    fontWeight = FontWeight.Medium
                 )
-            }
+            )
         }
     }
 }

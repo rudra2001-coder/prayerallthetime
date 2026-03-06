@@ -1,7 +1,15 @@
 package com.rudra.prayerallthetime.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -67,10 +75,12 @@ import com.rudra.prayerallthetime.ui.screen.charity.CharityViewModel
 import com.rudra.prayerallthetime.ui.screen.profile.ProfileScreen
 import com.rudra.prayerallthetime.ui.screen.notifications.NotificationScreen
 import com.rudra.prayerallthetime.ui.screen.achievements.AchievementsScreen
+import com.rudra.prayerallthetime.ui.screen.community.CommunityScreen
 import com.rudra.prayerallthetime.ui.screen.habits.HabitsScreen
 import com.rudra.prayerallthetime.ui.screen.habits.HabitsViewModel
 import com.rudra.prayerallthetime.ui.screen.duas.DuasScreen
 import com.rudra.prayerallthetime.ui.screen.duas.DuasViewModel
+import com.rudra.prayerallthetime.ui.theme.*
 import com.rudra.prayerallthetime.ui.theme.IslamicGold
 
 @Composable
@@ -99,7 +109,7 @@ fun PremiumNavigation() {
 
     Scaffold(
         topBar = {
-            if (currentDestination?.route != Screen.Dashboard.route) {
+            if (currentDestination?.route !in listOf(Screen.Dashboard.route, Screen.QuranHadith.route, Screen.Prayers.route, Screen.Ramadan.route, Screen.Community.route, Screen.Explore.route)) {
                 PremiumTopAppBar(
                     currentDestination = currentDestination,
                     navController = navController
@@ -122,7 +132,35 @@ fun PremiumNavigation() {
         NavHost(
             navController = navController,
             startDestination = Screen.Dashboard.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = {
+                androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
+                androidx.compose.animation.slideInHorizontally(
+                    initialOffsetX = { 300 },
+                    animationSpec = androidx.compose.animation.core.tween(300)
+                )
+            },
+            exitTransition = {
+                androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
+                androidx.compose.animation.slideOutHorizontally(
+                    targetOffsetX = { -300 },
+                    animationSpec = androidx.compose.animation.core.tween(300)
+                )
+            },
+            popEnterTransition = {
+                androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
+                androidx.compose.animation.slideInHorizontally(
+                    initialOffsetX = { -300 },
+                    animationSpec = androidx.compose.animation.core.tween(300)
+                )
+            },
+            popExitTransition = {
+                androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
+                androidx.compose.animation.slideOutHorizontally(
+                    targetOffsetX = { 300 },
+                    animationSpec = androidx.compose.animation.core.tween(300)
+                )
+            }
         ) {
             composable(Screen.Dashboard.route) {
                 CompleteDashboardScreen(
@@ -169,6 +207,10 @@ fun PremiumNavigation() {
                     navController = navController,
                     viewModel = ramadanViewModel
                 )
+            }
+
+            composable(Screen.Community.route) {
+                CommunityScreen(navController = navController, prayerViewModel = prayerViewModel)
             }
 
             composable(Screen.Worship.route) {
@@ -318,19 +360,21 @@ fun PremiumTopAppBar(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
                         .background(
                             brush = Brush.linearGradient(
-                                colors = listOf(IslamicGold, Color(0xFFFFD93D))
-                              )
+                                colors = listOf(EmeraldGreen, EmeraldGreenMedium)
+                            )
                         )
-                        .padding(6.dp),
+                        .padding(8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "🕌",
-                        fontSize = 14.sp
+                    Icon(
+                        imageVector = Icons.Default.Mosque,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
@@ -339,13 +383,14 @@ fun PremiumTopAppBar(
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold
                     ),
-                    color = Color(0xFF2C3E50)
+                    color = TextPrimaryDark
                 )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.White,
-            scrolledContainerColor = Color.White
+            containerColor = MidnightBlue,
+            scrolledContainerColor = MidnightBlueDark,
+            titleContentColor = TextPrimaryDark
         ),
         navigationIcon = {
             IconButton(
@@ -385,23 +430,20 @@ fun PremiumBottomNavigationBar(
     navController: NavHostController,
     onPremiumClick: () -> Unit
 ) {
+    val bottomNavItems = Screen.bottomNavItems
+    
     NavigationBar(
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         modifier = Modifier
             .shadow(
-                elevation = 16.dp,
+                elevation = 24.dp,
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                 clip = true
             )
             .navigationBarsPadding()
     ) {
-        listOf(
-            Screen.Dashboard,
-            Screen.Explore,
-            Screen.QuranHadith,
-            Screen.Analytics
-        ).forEach { screen ->
+        bottomNavItems.forEach { screen ->
             val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
 
             NavigationBarItem(
@@ -416,38 +458,56 @@ fun PremiumBottomNavigationBar(
                     }
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    indicatorColor = Color.Transparent,
-                    selectedIconColor = IslamicGold,
-                    unselectedIconColor = Color(0xFF2C3E50).copy(alpha = 0.5f),
-                    selectedTextColor = IslamicGold,
-                    unselectedTextColor = Color(0xFF2C3E50).copy(alpha = 0.5f)
+                    indicatorColor = EmeraldGreen.copy(alpha = 0.15f),
+                    selectedIconColor = EmeraldGreen,
+                    unselectedIconColor = TextSecondaryDark.copy(alpha = 0.6f),
+                    selectedTextColor = EmeraldGreen,
+                    unselectedTextColor = TextSecondaryDark.copy(alpha = 0.6f)
                 ),
                 icon = {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (selected) Color(0xFF2C3E50).copy(alpha = 0.08f)
-                                else Color.Transparent
-                            ),
-                        contentAlignment = Alignment.Center
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        screen.icon?.let {
-                            Icon(
-                                imageVector = it,
-                                contentDescription = screen.title,
-                                modifier = Modifier.size(24.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(
+                                    if (selected) EmeraldGreen.copy(alpha = 0.15f)
+                                    else Color.Transparent
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            screen.icon?.let {
+                                Icon(
+                                    imageVector = screen.icon,
+                                    contentDescription = screen.title,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = if (selected) EmeraldGreen else TextSecondaryDark.copy(alpha = 0.6f)
+                                )
+                            } ?: screen.emoji?.let {
+                                Text(
+                                    text = it, 
+                                    fontSize = 24.sp,
+                                    color = if (selected) EmeraldGreen else TextSecondaryDark.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                        if (selected) {
+                            Box(
+                                modifier = Modifier
+                                    .width(4.dp)
+                                    .height(4.dp)
+                                    .clip(CircleShape)
+                                    .background(EmeraldGreen)
                             )
-                        } ?: screen.emoji?.let {
-                            Text(text = it, fontSize = 24.sp)
                         }
                     }
                 },
                 label = {
                     Text(
                         text = screen.title,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                     )
                 }

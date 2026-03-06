@@ -40,6 +40,10 @@ class PrayerRepository @Inject constructor(
         
         val useManual = localSettings.useManualPrayerTimes.first()
         
+        // Get calculation method from settings
+        val calculationMethodStr = localSettings.prayerCalculationMethod.first()
+        val calculationMethod = CalculationMethod.fromString(calculationMethodStr)
+        
         val entity = if (useManual) {
             PrayerTimeEntity(
                 date = dateStr,
@@ -58,14 +62,18 @@ class PrayerRepository @Inject constructor(
         } else {
             val cachedEntity = prayerDao.getPrayerTimesByDate(dateStr)
             
-            if (networkUtils.isOnline()) {
+            // Check if we need to refresh (cached date is different from today)
+            val todayStr = LocalDate.now().format(dateFormatter)
+            val needsRefresh = cachedEntity == null || cachedEntity.date != todayStr
+            
+            if (networkUtils.isOnline() && needsRefresh) {
                 try {
                     fetchRemoteAndCache(latitude, longitude, date)
                 } catch (e: Exception) {
-                    cachedEntity ?: calculateWithCoreLogic(latitude, longitude, date)
+                    cachedEntity ?: calculateWithCoreLogic(latitude, longitude, date, calculationMethod)
                 }
             } else {
-                cachedEntity ?: calculateWithCoreLogic(latitude, longitude, date)
+                cachedEntity ?: calculateWithCoreLogic(latitude, longitude, date, calculationMethod)
             }
         }
 
@@ -100,11 +108,29 @@ class PrayerRepository @Inject constructor(
     }
 
     private suspend fun fetchRemoteAndCache(latitude: Double, longitude: Double, date: LocalDate): PrayerTimeEntity {
+        // Get calculation method for API method parameter
+        val methodCode = when (localSettings.prayerCalculationMethod.first()) {
+            "MUSLIM_WORLD_LEAGUE" -> 3
+            "ISNA" -> 2
+            "EGYPTIAN" -> 5
+            "KARACHI" -> 1
+            "UMM_AL_QURA" -> 4
+            "DUBAI" -> 6
+            "MOONSIGHTING_COMMITTEE" -> 7
+            "NORTH_AMERICA" -> 2
+            "KUWAIT" -> 8
+            "QATAR" -> 9
+            "SINGAPORE" -> 11
+            "TEHRAN" -> 10
+            "TURKEY" -> 12
+            else -> 3 // MWL default
+        }
+        
         val response = prayerApiService.getPrayerTimes(
             date = date.format(apiDateFormatter),
             latitude = latitude,
             longitude = longitude,
-            method = 1 // University of Islamic Sciences, Karachi (Good for Bangladesh/Subcontinent)
+            method = methodCode
         )
         
         val timings = response.data.timings
@@ -136,8 +162,8 @@ class PrayerRepository @Inject constructor(
         }
     }
 
-    private fun calculateWithCoreLogic(latitude: Double, longitude: Double, date: LocalDate): PrayerTimeEntity {
-        val calculator = PrayerTimesCalculator(CalculationMethod.BANGLADESH, Madhab.SHAFI)
+    private fun calculateWithCoreLogic(latitude: Double, longitude: Double, date: LocalDate, method: CalculationMethod = CalculationMethod.BANGLADESH): PrayerTimeEntity {
+        val calculator = PrayerTimesCalculator(method, Madhab.SHAFI)
         
         val tz = TimeZone.getDefault().rawOffset / (1000.0 * 60 * 60)
         val times = calculator.calculatePrayerTimes(date, latitude, longitude, tz)
